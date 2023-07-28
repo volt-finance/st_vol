@@ -76,7 +76,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     event ParticipateLong(address indexed sender, uint256 indexed epoch, uint256 amount);
     event Claim(address indexed sender, uint256 indexed epoch, uint256 amount);
     event EndRound(uint256 indexed epoch, uint256 indexed roundId, int256 price);
-    event LockRound(uint256 indexed epoch, uint256 indexed roundId, int256 price);
+    event StartRound(uint256 indexed epoch, uint256 indexed roundId, int256 price);
 
     event NewAdminAddress(address admin);
     event NewBufferAndIntervalSeconds(uint256 bufferSeconds, uint256 intervalSeconds);
@@ -95,7 +95,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 treasuryAmount
     );
 
-    event StartRound(uint256 indexed epoch);
+    event OpenRound(uint256 indexed epoch);
     event TokenRecovery(address indexed token, uint256 amount);
     event TreasuryClaim(uint256 amount);
     event Unpause(uint256 indexed epoch);
@@ -266,13 +266,13 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         oracleLatestRoundId = uint256(currentRoundId);
 
         // CurrentEpoch refers to previous round (n-1)
-        _safeLockRound(currentEpoch, currentRoundId, currentPrice);
+        _safeStartRound(currentEpoch, currentRoundId, currentPrice);
         _safeEndRound(currentEpoch - 1, currentRoundId, currentPrice);
         _calculateRewards(currentEpoch - 1);
 
         // Increment currentEpoch to current round (n)
         currentEpoch = currentEpoch + 1;
-        _safeStartRound(currentEpoch);
+        _safeOpenRound(currentEpoch);
     }
 
     /**
@@ -287,7 +287,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
         oracleLatestRoundId = uint256(currentRoundId);
 
-        _safeLockRound(currentEpoch, currentRoundId, currentPrice);
+        _safeStartRound(currentEpoch, currentRoundId, currentPrice);
 
         currentEpoch = currentEpoch + 1;
         _openRound(currentEpoch);
@@ -295,7 +295,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Start genesis round
+     * @notice Open genesis round
      * @dev Callable by admin or operator
      */
     function genesisOpenRound() external whenNotPaused onlyKeeperOrOperator {
@@ -589,12 +589,12 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Lock round
+     * @notice Start round
      * @param epoch: epoch
      * @param roundId: roundId
      * @param price: price of the round
      */
-    function _safeLockRound(
+    function _safeStartRound(
         uint256 epoch,
         uint256 roundId,
         int256 price
@@ -610,15 +610,15 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         round.startPrice = price;
         round.startOracleId = roundId;
 
-        emit LockRound(epoch, roundId, round.startPrice);
+        emit StartRound(epoch, roundId, round.startPrice);
     }
 
     /**
-     * @notice Start round
+     * @notice Open round
      * Previous round n-2 must end
      * @param epoch: epoch
      */
-    function _safeStartRound(uint256 epoch) internal {
+    function _safeOpenRound(uint256 epoch) internal {
         require(genesisOpenOnce, "Can only run after genesisOpenRound is triggered");
         require(rounds[epoch - 2].closeTimestamp != 0, "Can only start round after round n-2 has ended");
         require(
@@ -641,7 +641,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         round.epoch = epoch;
         round.totalAmount = 0;
 
-        emit StartRound(epoch);
+        emit OpenRound(epoch);
     }
 
     /**

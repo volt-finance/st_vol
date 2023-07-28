@@ -108,7 +108,7 @@ contract(
       // Epoch 1: Start genesis round 1
       let tx = await stVol.genesisOpenRound();
       currentTimestamp = (await time.latest()).toNumber();
-      expectEvent(tx, "StartRound", { epoch: new BN(1) });
+      expectEvent(tx, "OpenRound", { epoch: new BN(1) });
       assert.equal(await stVol.currentEpoch(), 1);
 
       // Start round 1
@@ -128,13 +128,13 @@ contract(
       tx = await stVol.genesisStartRound();
       currentTimestamp = (await time.latest()).toNumber();
 
-      expectEvent(tx, "LockRound", {
+      expectEvent(tx, "StartRound", {
         epoch: new BN(1),
         roundId: new BN(1),
         price: new BN(INITIAL_PRICE),
       });
 
-      expectEvent(tx, "StartRound", { epoch: new BN(2) });
+      expectEvent(tx, "OpenRound", { epoch: new BN(2) });
       assert.equal(await stVol.currentEpoch(), 2);
 
       // Lock round 1
@@ -165,13 +165,13 @@ contract(
         price: new BN(INITIAL_PRICE),
       });
 
-      expectEvent(tx, "LockRound", {
+      expectEvent(tx, "StartRound", {
         epoch: new BN(2),
         roundId: new BN(2),
         price: new BN(INITIAL_PRICE),
       });
 
-      expectEvent(tx, "StartRound", { epoch: new BN(3) });
+      expectEvent(tx, "OpenRound", { epoch: new BN(3) });
       assert.equal(await stVol.currentEpoch(), 3);
 
       // End round 1
