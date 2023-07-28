@@ -106,7 +106,7 @@ contract(
       assert.equal(await stVol.currentEpoch(), 0);
 
       // Epoch 1: Start genesis round 1
-      let tx = await stVol.genesisStartRound();
+      let tx = await stVol.genesisOpenRound();
       currentTimestamp = (await time.latest()).toNumber();
       expectEvent(tx, "StartRound", { epoch: new BN(1) });
       assert.equal(await stVol.currentEpoch(), 1);
@@ -125,7 +125,7 @@ contract(
       await time.increaseTo(currentTimestamp);
 
       // Epoch 2: Lock genesis round 1 and starts round 2
-      tx = await stVol.genesisLockRound();
+      tx = await stVol.genesisStartRound();
       currentTimestamp = (await time.latest()).toNumber();
 
       expectEvent(tx, "LockRound", {
@@ -182,20 +182,20 @@ contract(
     });
 
     it("Should not start rounds before genesis start and lock round has triggered", async () => {
-      await expectRevert(stVol.genesisLockRound(), "Can only run after genesisStartRound is triggered");
+      await expectRevert(stVol.genesisStartRound(), "Can only run after genesisOpenRound is triggered");
       await expectRevert(
         stVol.executeRound(),
-        "Can only run after genesisStartRound and genesisLockRound is triggered"
+        "Can only run after genesisOpenRound and genesisStartRound is triggered"
       );
 
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       await expectRevert(
         stVol.executeRound(),
-        "Can only run after genesisStartRound and genesisLockRound is triggered"
+        "Can only run after genesisOpenRound and genesisStartRound is triggered"
       );
 
       await nextEpoch();
-      await stVol.genesisLockRound(); // Success
+      await stVol.genesisStartRound(); // Success
 
       await nextEpoch();
       await oracle.updateAnswer(INITIAL_PRICE); // To update Oracle roundId
@@ -203,10 +203,10 @@ contract(
     });
 
     it("Should not lock round before startTimestamp and end round before closeTimestamp", async () => {
-      await stVol.genesisStartRound();
-      await expectRevert(stVol.genesisLockRound(), "Can only lock round after startTimestamp");
+      await stVol.genesisOpenRound();
+      await expectRevert(stVol.genesisStartRound(), "Can only lock round after startTimestamp");
       await nextEpoch();
-      await stVol.genesisLockRound();
+      await stVol.genesisStartRound();
       await oracle.updateAnswer(INITIAL_PRICE); // To update Oracle roundId
       await expectRevert(stVol.executeRound(), "Can only lock round after startTimestamp");
 
@@ -216,7 +216,7 @@ contract(
 
     it("Should record oracle price", async () => {
       // Epoch 1
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       assert.equal((await stVol.rounds(1)).startPrice, 0);
       assert.equal((await stVol.rounds(1)).closePrice, 0);
 
@@ -224,7 +224,7 @@ contract(
       await nextEpoch();
       const price120 = 12000000000; // $120
       await oracle.updateAnswer(price120);
-      await stVol.genesisLockRound(); // For round 1
+      await stVol.genesisStartRound(); // For round 1
       assert.equal((await stVol.rounds(1)).startPrice, price120);
       assert.equal((await stVol.rounds(1)).closePrice, 0);
       assert.equal((await stVol.rounds(2)).startPrice, 0);
@@ -258,9 +258,9 @@ contract(
     });
 
     it("Should reject oracle data if data is stale", async () => {
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       await nextEpoch();
-      await stVol.genesisLockRound();
+      await stVol.genesisStartRound();
       await nextEpoch();
       await oracle.updateAnswer(INITIAL_PRICE); // To update Oracle roundId
       await stVol.executeRound();
@@ -272,7 +272,7 @@ contract(
 
     it("Should record data and user participate", async () => {
       // Epoch 1
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("1.1"), { from: bullUser1 }); // 1.1 USDC
@@ -296,7 +296,7 @@ contract(
 
       // Epoch 2
       await nextEpoch();
-      await stVol.genesisLockRound(); // For round 1
+      await stVol.genesisStartRound(); // For round 1
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("2.1"), { from: bullUser1 }); // 2.1 USDC
@@ -371,7 +371,7 @@ contract(
 
     it("Should not allow multiple participates", async () => {
       // Epoch 1
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // Success
@@ -395,7 +395,7 @@ contract(
 
       // Epoch 2
       await nextEpoch();
-      await stVol.genesisLockRound(); // For round 1
+      await stVol.genesisStartRound(); // For round 1
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // Success
@@ -445,7 +445,7 @@ contract(
 
     it("Should not allow participate lesser than minimum participate amount", async () => {
       // Epoch 1
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
       await expectRevert(
@@ -456,7 +456,7 @@ contract(
 
       // Epoch 2
       await nextEpoch();
-      await stVol.genesisLockRound(); // For round 1
+      await stVol.genesisStartRound(); // For round 1
       currentEpoch = await stVol.currentEpoch();
 
       await expectRevert(
@@ -482,7 +482,7 @@ contract(
       // Epoch 1
       const price110 = 11000000000; // $110
       await oracle.updateAnswer(price110);
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("1.1"), { from: bullUser1 }); // 1.1 USDC
@@ -498,7 +498,7 @@ contract(
       await nextEpoch();
       const price120 = 12000000000; // $120
       await oracle.updateAnswer(price120);
-      await stVol.genesisLockRound(); // For round 1
+      await stVol.genesisStartRound(); // For round 1
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("2.1"), { from: bullUser1 }); // 2.1 USDC
@@ -559,9 +559,9 @@ contract(
     });
 
     it("Should not lock round before startTimestamp", async () => {
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       await nextEpoch();
-      await stVol.genesisLockRound();
+      await stVol.genesisStartRound();
       await nextEpoch();
       await oracle.updateAnswer(INITIAL_PRICE); // To update Oracle roundId
       await stVol.executeRound();
@@ -576,7 +576,7 @@ contract(
       // Epoch 1
       const price110 = 11000000000; // $110
       await oracle.updateAnswer(price110);
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // 1 USDC
@@ -597,7 +597,7 @@ contract(
       await nextEpoch();
       const price120 = 12000000000; // $120
       await oracle.updateAnswer(price120);
-      await stVol.genesisLockRound(); // For round 1
+      await stVol.genesisStartRound(); // For round 1
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("21"), { from: bullUser1 }); // 21 USDC
@@ -678,7 +678,7 @@ contract(
       // Epoch 1
       const price110 = 11000000000; // $110
       await oracle.updateAnswer(price110);
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // 1 USDC
@@ -693,7 +693,7 @@ contract(
       await nextEpoch();
       const price120 = 12000000000; // $120
       await oracle.updateAnswer(price120);
-      await stVol.genesisLockRound(); // For round 1
+      await stVol.genesisStartRound(); // For round 1
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("21"), { from: bullUser1 }); // 21 USDC
@@ -763,7 +763,7 @@ contract(
       // Epoch 1
       const price110 = 11000000000; // $110
       await oracle.updateAnswer(price110);
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // 1 USDC
@@ -773,7 +773,7 @@ contract(
       // Epoch 2
       await nextEpoch();
       await oracle.updateAnswer(price110);
-      await stVol.genesisLockRound(); // For round 1
+      await stVol.genesisStartRound(); // For round 1
 
       // Epoch 3, Round 1 is Same (110 == 110), House wins
       await nextEpoch();
@@ -793,7 +793,7 @@ contract(
       // Epoch 1
       const price110 = 11000000000; // $110
       await oracle.updateAnswer(price110);
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // 1 USDC
@@ -808,7 +808,7 @@ contract(
       await nextEpoch();
       const price120 = 12000000000; // $120
       await oracle.updateAnswer(price120);
-      await stVol.genesisLockRound(); // For round 1
+      await stVol.genesisStartRound(); // For round 1
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("21"), { from: bullUser1 }); // 21 USDC
@@ -915,8 +915,8 @@ contract(
     });
 
     it("Should reject operator functions when not operator", async () => {
-      await expectRevert(stVol.genesisLockRound({ from: admin }), "Not keeper/operator");
       await expectRevert(stVol.genesisStartRound({ from: admin }), "Not keeper/operator");
+      await expectRevert(stVol.genesisOpenRound({ from: admin }), "Not keeper/operator");
       await expectRevert(stVol.executeRound({ from: admin }), "Not keeper/operator");
     });
 
@@ -950,7 +950,7 @@ contract(
       // Epoch 1
       const price110 = 11000000000; // $110
       await oracle.updateAnswer(price110);
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // 1 USDC
@@ -965,7 +965,7 @@ contract(
 
       // Epoch 2
       await nextEpoch();
-      await stVol.genesisLockRound();
+      await stVol.genesisStartRound();
       currentEpoch = await stVol.currentEpoch();
 
       assert.equal(await stVol.refundable(1, bullUser1), false);
@@ -1016,7 +1016,7 @@ contract(
       // Epoch 1
       const price110 = 11000000000; // $110
       await oracle.updateAnswer(price110);
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
       await expectRevert(stVol.participateLong("1", ether("101"), { from: bullUser1 }), "transfer amount exceeds balance");
       await expectRevert(stVol.participateShort("1", ether("101"), { from: bearUser1 }), "transfer amount exceeds balance");
@@ -1036,41 +1036,41 @@ contract(
     it("Rejections for genesis start and lock rounds work as expected", async () => {
       await expectRevert(
         stVol.executeRound(),
-        "Can only run after genesisStartRound and genesisLockRound is triggered"
+        "Can only run after genesisOpenRound and genesisStartRound is triggered"
       );
 
       // Epoch 1
-      await stVol.genesisStartRound();
-      await expectRevert(stVol.genesisStartRound(), "Can only run genesisStartRound once");
-      await expectRevert(stVol.genesisLockRound(), "Can only lock round after startTimestamp");
+      await stVol.genesisOpenRound();
+      await expectRevert(stVol.genesisOpenRound(), "Can only run genesisOpenRound once");
+      await expectRevert(stVol.genesisStartRound(), "Can only lock round after startTimestamp");
 
       // Advance to next epoch
       await nextEpoch();
       await nextEpoch();
 
-      await expectRevert(stVol.genesisLockRound(), "Can only lock round within bufferSeconds");
+      await expectRevert(stVol.genesisStartRound(), "Can only lock round within bufferSeconds");
 
       await expectRevert(
         stVol.executeRound(),
-        "Can only run after genesisStartRound and genesisLockRound is triggered"
+        "Can only run after genesisOpenRound and genesisStartRound is triggered"
       );
 
       // Cannot restart genesis round
-      await expectRevert(stVol.genesisStartRound(), "Can only run genesisStartRound once");
+      await expectRevert(stVol.genesisOpenRound(), "Can only run genesisOpenRound once");
 
       // Admin needs to pause, then unpause
       await stVol.pause({ from: admin });
       await stVol.unpause({ from: admin });
 
       // Prediction restart
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
 
       await nextEpoch();
 
       // Lock the round
-      await stVol.genesisLockRound();
+      await stVol.genesisStartRound();
       await nextEpoch();
-      await expectRevert(stVol.genesisLockRound(), "Can only run genesisLockRound once");
+      await expectRevert(stVol.genesisStartRound(), "Can only run genesisStartRound once");
 
       await nextEpoch();
       await oracle.updateAnswer(INITIAL_PRICE); // To update Oracle roundId
@@ -1078,9 +1078,9 @@ contract(
     });
 
     it("Should prevent betting when paused", async () => {
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       await nextEpoch();
-      await stVol.genesisLockRound();
+      await stVol.genesisStartRound();
       await nextEpoch();
       await oracle.updateAnswer(INITIAL_PRICE); // To update Oracle roundId
       await stVol.executeRound();
@@ -1093,10 +1093,10 @@ contract(
     });
 
     it("Should prevent round operations when paused", async () => {
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       await nextEpoch();
       await oracle.updateAnswer(INITIAL_PRICE);
-      await stVol.genesisLockRound();
+      await stVol.genesisStartRound();
       await nextEpoch();
       await oracle.updateAnswer(INITIAL_PRICE);
       await stVol.executeRound();
@@ -1104,24 +1104,24 @@ contract(
       let tx = await stVol.pause({ from: admin });
       expectEvent(tx, "Pause", { epoch: new BN(3) });
       await expectRevert(stVol.executeRound(), "Pausable: paused");
+      await expectRevert(stVol.genesisOpenRound(), "Pausable: paused");
       await expectRevert(stVol.genesisStartRound(), "Pausable: paused");
-      await expectRevert(stVol.genesisLockRound(), "Pausable: paused");
 
       // Unpause and resume
       await nextEpoch(); // Goes to next epoch block number, but doesn't increase currentEpoch
       tx = await stVol.unpause({ from: admin });
       expectEvent(tx, "Unpause", { epoch: new BN(3) }); // Although nextEpoch is called, currentEpoch doesn't change
-      await stVol.genesisStartRound(); // Success
+      await stVol.genesisOpenRound(); // Success
       await nextEpoch();
       await oracle.updateAnswer(INITIAL_PRICE);
-      await stVol.genesisLockRound(); // Success
+      await stVol.genesisStartRound(); // Success
       await nextEpoch();
       await oracle.updateAnswer(INITIAL_PRICE);
       await stVol.executeRound(); // Success
     });
 
     it("Should paginate user rounds", async () => {
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 });
@@ -1130,7 +1130,7 @@ contract(
 
       await nextEpoch();
       await oracle.updateAnswer(INITIAL_PRICE);
-      await stVol.genesisLockRound();
+      await stVol.genesisStartRound();
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 });
@@ -1237,7 +1237,7 @@ contract(
       assert.equal(cursor, 3);
     });
     it("recoverToken function work as expected", async () => {
-      await stVol.genesisStartRound();
+      await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
       await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 });

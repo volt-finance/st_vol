@@ -258,7 +258,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     function executeRound() external whenNotPaused onlyKeeperOrOperator {
         require(
             genesisOpenOnce && genesisStartOnce,
-            "Can only run after genesisStartRound and genesisLockRound is triggered"
+            "Can only run after genesisOpenRound and genesisStartRound is triggered"
         );
 
         (uint80 currentRoundId, int256 currentPrice) = _getPriceFromOracle();
@@ -279,9 +279,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @notice Lock genesis round
      * @dev Callable by operator
      */
-    function genesisLockRound() external whenNotPaused onlyKeeperOrOperator {
-        require(genesisOpenOnce, "Can only run after genesisStartRound is triggered");
-        require(!genesisStartOnce, "Can only run genesisLockRound once");
+    function genesisStartRound() external whenNotPaused onlyKeeperOrOperator {
+        require(genesisOpenOnce, "Can only run after genesisOpenRound is triggered");
+        require(!genesisStartOnce, "Can only run genesisStartRound once");
 
         (uint80 currentRoundId, int256 currentPrice) = _getPriceFromOracle();
 
@@ -290,7 +290,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         _safeLockRound(currentEpoch, currentRoundId, currentPrice);
 
         currentEpoch = currentEpoch + 1;
-        _startRound(currentEpoch);
+        _openRound(currentEpoch);
         genesisStartOnce = true;
     }
 
@@ -298,11 +298,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @notice Start genesis round
      * @dev Callable by admin or operator
      */
-    function genesisStartRound() external whenNotPaused onlyKeeperOrOperator {
-        require(!genesisOpenOnce, "Can only run genesisStartRound once");
+    function genesisOpenRound() external whenNotPaused onlyKeeperOrOperator {
+        require(!genesisOpenOnce, "Can only run genesisOpenRound once");
 
         currentEpoch = currentEpoch + 1;
-        _startRound(currentEpoch);
+        _openRound(currentEpoch);
         genesisOpenOnce = true;
     }
 
@@ -619,13 +619,13 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @param epoch: epoch
      */
     function _safeStartRound(uint256 epoch) internal {
-        require(genesisOpenOnce, "Can only run after genesisStartRound is triggered");
+        require(genesisOpenOnce, "Can only run after genesisOpenRound is triggered");
         require(rounds[epoch - 2].closeTimestamp != 0, "Can only start round after round n-2 has ended");
         require(
             block.timestamp >= rounds[epoch - 2].closeTimestamp,
             "Can only start new round after round n-2 closeTimestamp"
         );
-        _startRound(epoch);
+        _openRound(epoch);
     }
 
     /**
@@ -633,7 +633,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * Previous round n-2 must end
      * @param epoch: epoch
      */
-    function _startRound(uint256 epoch) internal {
+    function _openRound(uint256 epoch) internal {
         Round storage round = rounds[epoch];
         round.openTimestamp = block.timestamp;
         round.startTimestamp = block.timestamp + intervalSeconds;
