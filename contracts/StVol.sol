@@ -19,15 +19,15 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
     AggregatorV3Interface public oracle;
 
-    bool public genesisLockOnce = false;
+    bool public genesisOpenOnce = false;
     bool public genesisStartOnce = false;
 
     address public adminAddress; // address of the admin
     address public operatorAddress; // address of the operator
     address public keeperAddress; // address of the keeper
 
-    uint256 public bufferSeconds; // number of seconds for valid execution of a prediction round
-    uint256 public intervalSeconds; // interval in seconds between two prediction rounds
+    uint256 public bufferSeconds; // number of seconds for valid execution of a participate round
+    uint256 public intervalSeconds; // interval in seconds between two participate rounds
 
     uint256 public minParticipateAmount; // minimum participate amount (denominated in wei)
     uint256 public treasuryFee; // treasury rate (e.g. 200 = 2%, 150 = 1.50%)
@@ -51,12 +51,12 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
     struct Round {
         uint256 epoch;
+        uint256 openTimestamp;
         uint256 startTimestamp;
-        uint256 lockTimestamp;
         uint256 closeTimestamp;
-        int256 lockPrice;
+        int256 startPrice;
         int256 closePrice;
-        uint256 lockOracleId;
+        uint256 startOracleId;
         uint256 closeOracleId;
         uint256 totalAmount;
         uint256 bullAmount;
@@ -169,7 +169,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      */
     function participateShort(uint256 epoch, uint256 _amount) external whenNotPaused nonReentrant notContract {
         require(epoch == currentEpoch, "Participate is too early/late");
-        require(_bettable(epoch), "Round not bettable");
+        require(_participable(epoch), "Round not participable");
         require(_amount >= minParticipateAmount, "Participate amount must be greater than minParticipateAmount");
         require(ledger[epoch][msg.sender].amount == 0, "Can only participate once per round");
 
@@ -195,7 +195,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      */
     function participateLong(uint256 epoch, uint256 _amount) external whenNotPaused nonReentrant notContract {
         require(epoch == currentEpoch, "Participate is too early/late");
-        require(_bettable(epoch), "Round not bettable");
+        require(_participable(epoch), "Round not participable");
         require(_amount >= minParticipateAmount, "Participate amount must be greater than minParticipateAmount");
         require(ledger[epoch][msg.sender].amount == 0, "Can only participate once per round");
 
@@ -223,7 +223,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 reward; // Initializes reward
 
         for (uint256 i = 0; i < epochs.length; i++) {
-            require(rounds[epochs[i]].startTimestamp != 0, "Round has not started");
+            require(rounds[epochs[i]].openTimestamp != 0, "Round has not started");
             require(block.timestamp > rounds[epochs[i]].closeTimestamp, "Round has not ended");
 
             uint256 addedReward = 0;
@@ -257,7 +257,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      */
     function executeRound() external whenNotPaused onlyKeeperOrOperator {
         require(
-            genesisStartOnce && genesisLockOnce,
+            genesisOpenOnce && genesisStartOnce,
             "Can only run after genesisStartRound and genesisLockRound is triggered"
         );
 
@@ -280,8 +280,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @dev Callable by operator
      */
     function genesisLockRound() external whenNotPaused onlyKeeperOrOperator {
-        require(genesisStartOnce, "Can only run after genesisStartRound is triggered");
-        require(!genesisLockOnce, "Can only run genesisLockRound once");
+        require(genesisOpenOnce, "Can only run after genesisStartRound is triggered");
+        require(!genesisStartOnce, "Can only run genesisLockRound once");
 
         (uint80 currentRoundId, int256 currentPrice) = _getPriceFromOracle();
 
@@ -291,7 +291,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
         currentEpoch = currentEpoch + 1;
         _startRound(currentEpoch);
-        genesisLockOnce = true;
+        genesisStartOnce = true;
     }
 
     /**
@@ -299,11 +299,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @dev Callable by admin or operator
      */
     function genesisStartRound() external whenNotPaused onlyKeeperOrOperator {
-        require(!genesisStartOnce, "Can only run genesisStartRound once");
+        require(!genesisOpenOnce, "Can only run genesisStartRound once");
 
         currentEpoch = currentEpoch + 1;
         _startRound(currentEpoch);
-        genesisStartOnce = true;
+        genesisOpenOnce = true;
     }
 
     /**
@@ -333,8 +333,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @dev Callable by admin or operator or keeper
      */
     function unpause() external whenPaused onlyAdminOrOperatorOrKeeper {
+        genesisOpenOnce = false;
         genesisStartOnce = false;
-        genesisLockOnce = false;
         _unpause();
 
         emit Unpause(currentEpoch);
@@ -499,15 +499,15 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     function claimable(uint256 epoch, address user) public view returns (bool) {
         ParticipateInfo memory participateInfo = ledger[epoch][user];
         Round memory round = rounds[epoch];
-        if (round.lockPrice == round.closePrice) {
+        if (round.startPrice == round.closePrice) {
             return false;
         }
         return
             round.oracleCalled &&
             participateInfo.amount != 0 &&
             !participateInfo.claimed &&
-            ((round.closePrice > round.lockPrice && participateInfo.position == Position.Bull) ||
-                (round.closePrice < round.lockPrice && participateInfo.position == Position.Bear));
+            ((round.closePrice > round.startPrice && participateInfo.position == Position.Bull) ||
+                (round.closePrice < round.startPrice && participateInfo.position == Position.Bear));
     }
 
     /**
@@ -537,13 +537,13 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 rewardAmount;
 
         // Long wins
-        if (round.closePrice > round.lockPrice) {
+        if (round.closePrice > round.startPrice) {
             rewardBaseCalAmount = round.bullAmount;
             treasuryAmt = (round.totalAmount * treasuryFee) / 10000;
             rewardAmount = round.totalAmount - treasuryAmt;
         }
         // Short wins
-        else if (round.closePrice < round.lockPrice) {
+        else if (round.closePrice < round.startPrice) {
             rewardBaseCalAmount = round.bearAmount;
             treasuryAmt = (round.totalAmount * treasuryFee) / 10000;
             rewardAmount = round.totalAmount - treasuryAmt;
@@ -574,7 +574,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 roundId,
         int256 price
     ) internal {
-        require(rounds[epoch].lockTimestamp != 0, "Can only end round after round has locked");
+        require(rounds[epoch].startTimestamp != 0, "Can only end round after round has locked");
         require(block.timestamp >= rounds[epoch].closeTimestamp, "Can only end round after closeTimestamp");
         require(
             block.timestamp <= rounds[epoch].closeTimestamp + bufferSeconds,
@@ -599,18 +599,18 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 roundId,
         int256 price
     ) internal {
-        require(rounds[epoch].startTimestamp != 0, "Can only lock round after round has started");
-        require(block.timestamp >= rounds[epoch].lockTimestamp, "Can only lock round after lockTimestamp");
+        require(rounds[epoch].openTimestamp != 0, "Can only lock round after round has started");
+        require(block.timestamp >= rounds[epoch].startTimestamp, "Can only lock round after startTimestamp");
         require(
-            block.timestamp <= rounds[epoch].lockTimestamp + bufferSeconds,
+            block.timestamp <= rounds[epoch].startTimestamp + bufferSeconds,
             "Can only lock round within bufferSeconds"
         );
         Round storage round = rounds[epoch];
         round.closeTimestamp = block.timestamp + intervalSeconds;
-        round.lockPrice = price;
-        round.lockOracleId = roundId;
+        round.startPrice = price;
+        round.startOracleId = roundId;
 
-        emit LockRound(epoch, roundId, round.lockPrice);
+        emit LockRound(epoch, roundId, round.startPrice);
     }
 
     /**
@@ -619,7 +619,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @param epoch: epoch
      */
     function _safeStartRound(uint256 epoch) internal {
-        require(genesisStartOnce, "Can only run after genesisStartRound is triggered");
+        require(genesisOpenOnce, "Can only run after genesisStartRound is triggered");
         require(rounds[epoch - 2].closeTimestamp != 0, "Can only start round after round n-2 has ended");
         require(
             block.timestamp >= rounds[epoch - 2].closeTimestamp,
@@ -635,8 +635,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      */
     function _startRound(uint256 epoch) internal {
         Round storage round = rounds[epoch];
-        round.startTimestamp = block.timestamp;
-        round.lockTimestamp = block.timestamp + intervalSeconds;
+        round.openTimestamp = block.timestamp;
+        round.startTimestamp = block.timestamp + intervalSeconds;
         round.closeTimestamp = block.timestamp + (2 * intervalSeconds);
         round.epoch = epoch;
         round.totalAmount = 0;
@@ -647,14 +647,14 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     /**
      * @notice Determine if a round is valid for receiving bets
      * Round must have started and locked
-     * Current timestamp must be within startTimestamp and closeTimestamp
+     * Current timestamp must be within openTimestamp and closeTimestamp
      */
-    function _bettable(uint256 epoch) internal view returns (bool) {
+    function _participable(uint256 epoch) internal view returns (bool) {
         return
+            rounds[epoch].openTimestamp != 0 &&
             rounds[epoch].startTimestamp != 0 &&
-            rounds[epoch].lockTimestamp != 0 &&
-            block.timestamp > rounds[epoch].startTimestamp &&
-            block.timestamp < rounds[epoch].lockTimestamp;
+            block.timestamp > rounds[epoch].openTimestamp &&
+            block.timestamp < rounds[epoch].startTimestamp;
     }
 
     /**

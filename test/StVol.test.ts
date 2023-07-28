@@ -92,8 +92,8 @@ contract(
       assert.equal(await stVol.treasuryAmount(), 0);
       assert.equal(await stVol.minParticipateAmount(), MIN_AMOUNT.toString());
       assert.equal(await stVol.oracleUpdateAllowance(), UPDATE_ALLOWANCE);
+      assert.equal(await stVol.genesisOpenOnce(), false);
       assert.equal(await stVol.genesisStartOnce(), false);
-      assert.equal(await stVol.genesisLockOnce(), false);
       assert.equal(await stVol.paused(), false);
     });
 
@@ -112,10 +112,10 @@ contract(
       assert.equal(await stVol.currentEpoch(), 1);
 
       // Start round 1
-      assert.equal(await stVol.genesisStartOnce(), true);
-      assert.equal(await stVol.genesisLockOnce(), false);
-      assert.equal((await stVol.rounds(1)).startTimestamp, currentTimestamp);
-      assert.equal((await stVol.rounds(1)).lockTimestamp, currentTimestamp + INTERVAL_SECONDS);
+      assert.equal(await stVol.genesisOpenOnce(), true);
+      assert.equal(await stVol.genesisStartOnce(), false);
+      assert.equal((await stVol.rounds(1)).openTimestamp, currentTimestamp);
+      assert.equal((await stVol.rounds(1)).startTimestamp, currentTimestamp + INTERVAL_SECONDS);
       assert.equal((await stVol.rounds(1)).closeTimestamp, currentTimestamp + INTERVAL_SECONDS * 2);
       assert.equal((await stVol.rounds(1)).epoch, 1);
       assert.equal((await stVol.rounds(1)).totalAmount, 0);
@@ -138,13 +138,13 @@ contract(
       assert.equal(await stVol.currentEpoch(), 2);
 
       // Lock round 1
+      assert.equal(await stVol.genesisOpenOnce(), true);
       assert.equal(await stVol.genesisStartOnce(), true);
-      assert.equal(await stVol.genesisLockOnce(), true);
-      assert.equal((await stVol.rounds(1)).lockPrice, INITIAL_PRICE);
+      assert.equal((await stVol.rounds(1)).startPrice, INITIAL_PRICE);
 
       // Start round 2
-      assert.equal((await stVol.rounds(2)).startTimestamp, currentTimestamp);
-      assert.equal((await stVol.rounds(2)).lockTimestamp, currentTimestamp + INTERVAL_SECONDS);
+      assert.equal((await stVol.rounds(2)).openTimestamp, currentTimestamp);
+      assert.equal((await stVol.rounds(2)).startTimestamp, currentTimestamp + INTERVAL_SECONDS);
       assert.equal((await stVol.rounds(2)).closeTimestamp, currentTimestamp + 2 * INTERVAL_SECONDS);
       assert.equal((await stVol.rounds(2)).epoch, 2);
       assert.equal((await stVol.rounds(2)).totalAmount, 0);
@@ -178,7 +178,7 @@ contract(
       assert.equal((await stVol.rounds(1)).closePrice, INITIAL_PRICE);
 
       // Lock round 2
-      assert.equal((await stVol.rounds(2)).lockPrice, INITIAL_PRICE);
+      assert.equal((await stVol.rounds(2)).startPrice, INITIAL_PRICE);
     });
 
     it("Should not start rounds before genesis start and lock round has triggered", async () => {
@@ -202,13 +202,13 @@ contract(
       await stVol.executeRound(); // Success
     });
 
-    it("Should not lock round before lockTimestamp and end round before closeTimestamp", async () => {
+    it("Should not lock round before startTimestamp and end round before closeTimestamp", async () => {
       await stVol.genesisStartRound();
-      await expectRevert(stVol.genesisLockRound(), "Can only lock round after lockTimestamp");
+      await expectRevert(stVol.genesisLockRound(), "Can only lock round after startTimestamp");
       await nextEpoch();
       await stVol.genesisLockRound();
       await oracle.updateAnswer(INITIAL_PRICE); // To update Oracle roundId
-      await expectRevert(stVol.executeRound(), "Can only lock round after lockTimestamp");
+      await expectRevert(stVol.executeRound(), "Can only lock round after startTimestamp");
 
       await nextEpoch();
       await stVol.executeRound(); // Success
@@ -217,7 +217,7 @@ contract(
     it("Should record oracle price", async () => {
       // Epoch 1
       await stVol.genesisStartRound();
-      assert.equal((await stVol.rounds(1)).lockPrice, 0);
+      assert.equal((await stVol.rounds(1)).startPrice, 0);
       assert.equal((await stVol.rounds(1)).closePrice, 0);
 
       // Epoch 2
@@ -225,9 +225,9 @@ contract(
       const price120 = 12000000000; // $120
       await oracle.updateAnswer(price120);
       await stVol.genesisLockRound(); // For round 1
-      assert.equal((await stVol.rounds(1)).lockPrice, price120);
+      assert.equal((await stVol.rounds(1)).startPrice, price120);
       assert.equal((await stVol.rounds(1)).closePrice, 0);
-      assert.equal((await stVol.rounds(2)).lockPrice, 0);
+      assert.equal((await stVol.rounds(2)).startPrice, 0);
       assert.equal((await stVol.rounds(2)).closePrice, 0);
 
       // Epoch 3
@@ -235,11 +235,11 @@ contract(
       const price130 = 13000000000; // $130
       await oracle.updateAnswer(price130);
       await stVol.executeRound();
-      assert.equal((await stVol.rounds(1)).lockPrice, price120);
+      assert.equal((await stVol.rounds(1)).startPrice, price120);
       assert.equal((await stVol.rounds(1)).closePrice, price130);
-      assert.equal((await stVol.rounds(2)).lockPrice, price130);
+      assert.equal((await stVol.rounds(2)).startPrice, price130);
       assert.equal((await stVol.rounds(2)).closePrice, 0);
-      assert.equal((await stVol.rounds(3)).lockPrice, 0);
+      assert.equal((await stVol.rounds(3)).startPrice, 0);
       assert.equal((await stVol.rounds(3)).closePrice, 0);
 
       // Epoch 4
@@ -247,13 +247,13 @@ contract(
       const price140 = 14000000000; // $140
       await oracle.updateAnswer(price140);
       await stVol.executeRound();
-      assert.equal((await stVol.rounds(1)).lockPrice, price120);
+      assert.equal((await stVol.rounds(1)).startPrice, price120);
       assert.equal((await stVol.rounds(1)).closePrice, price130);
-      assert.equal((await stVol.rounds(2)).lockPrice, price130);
+      assert.equal((await stVol.rounds(2)).startPrice, price130);
       assert.equal((await stVol.rounds(2)).closePrice, price140);
-      assert.equal((await stVol.rounds(3)).lockPrice, price140);
+      assert.equal((await stVol.rounds(3)).startPrice, price140);
       assert.equal((await stVol.rounds(3)).closePrice, 0);
-      assert.equal((await stVol.rounds(4)).lockPrice, 0);
+      assert.equal((await stVol.rounds(4)).startPrice, 0);
       assert.equal((await stVol.rounds(4)).closePrice, 0);
     });
 
@@ -558,7 +558,7 @@ contract(
       );
     });
 
-    it("Should not lock round before lockTimestamp", async () => {
+    it("Should not lock round before startTimestamp", async () => {
       await stVol.genesisStartRound();
       await nextEpoch();
       await stVol.genesisLockRound();
@@ -567,7 +567,7 @@ contract(
       await stVol.executeRound();
 
       await oracle.updateAnswer(INITIAL_PRICE); // To update Oracle roundId
-      await expectRevert(stVol.executeRound(), "Can only lock round after lockTimestamp");
+      await expectRevert(stVol.executeRound(), "Can only lock round after startTimestamp");
       await nextEpoch();
       await stVol.executeRound(); // Success
     });
@@ -1008,8 +1008,8 @@ contract(
 
     it("Rejections for participate bulls/bears work as expected", async () => {
       // Epoch 0
-      await expectRevert(stVol.participateLong("0", ether("1"), { from: bullUser1 }), "Round not bettable");
-      await expectRevert(stVol.participateShort("0", ether("1"), { from: bullUser1 }), "Round not bettable");
+      await expectRevert(stVol.participateLong("0", ether("1"), { from: bullUser1 }), "Round not participable");
+      await expectRevert(stVol.participateShort("0", ether("1"), { from: bullUser1 }), "Round not participable");
       await expectRevert(stVol.participateLong("1", ether("1"), { from: bullUser1 }), "Participate is too early/late");
       await expectRevert(stVol.participateShort("1", ether("1"), { from: bullUser1 }), "Participate is too early/late");
 
@@ -1042,7 +1042,7 @@ contract(
       // Epoch 1
       await stVol.genesisStartRound();
       await expectRevert(stVol.genesisStartRound(), "Can only run genesisStartRound once");
-      await expectRevert(stVol.genesisLockRound(), "Can only lock round after lockTimestamp");
+      await expectRevert(stVol.genesisLockRound(), "Can only lock round after startTimestamp");
 
       // Advance to next epoch
       await nextEpoch();
