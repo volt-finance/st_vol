@@ -40,7 +40,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
     uint256 public constant MAX_TREASURY_FEE = 1000; // 10%
 
-    mapping(uint256 => mapping(address => BetInfo)) public ledger;
+    mapping(uint256 => mapping(address => ParticipateInfo)) public ledger;
     mapping(uint256 => Round) public rounds;
     mapping(address => uint256[]) public userRounds;
 
@@ -66,7 +66,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         bool oracleCalled;
     }
 
-    struct BetInfo {
+    struct ParticipateInfo {
         Position position;
         uint256 amount;
         bool claimed; // default false
@@ -135,7 +135,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @param _operatorAddress: operator address
      * @param _intervalSeconds: number of time within an interval
      * @param _bufferSeconds: buffer of time for resolution of price
-     * @param _minParticipateAmount: minimum bet amounts (in wei)
+     * @param _minParticipateAmount: minimum participate amounts (in wei)
      * @param _oracleUpdateAllowance: oracle update allowance
      * @param _treasuryFee: treasury fee (1000 = 10%)
      */
@@ -168,10 +168,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @param epoch: epoch
      */
     function participateShort(uint256 epoch, uint256 _amount) external whenNotPaused nonReentrant notContract {
-        require(epoch == currentEpoch, "Bet is too early/late");
+        require(epoch == currentEpoch, "Participate is too early/late");
         require(_bettable(epoch), "Round not bettable");
-        require(_amount >= minParticipateAmount, "Bet amount must be greater than minParticipateAmount");
-        require(ledger[epoch][msg.sender].amount == 0, "Can only bet once per round");
+        require(_amount >= minParticipateAmount, "Participate amount must be greater than minParticipateAmount");
+        require(ledger[epoch][msg.sender].amount == 0, "Can only participate once per round");
 
         token.safeTransferFrom(msg.sender, address(this), _amount);
         // Update round data
@@ -181,9 +181,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         round.bearAmount = round.bearAmount + amount;
 
         // Update user data
-        BetInfo storage betInfo = ledger[epoch][msg.sender];
-        betInfo.position = Position.Bear;
-        betInfo.amount = amount;
+        ParticipateInfo storage participateInfo = ledger[epoch][msg.sender];
+        participateInfo.position = Position.Bear;
+        participateInfo.amount = amount;
         userRounds[msg.sender].push(epoch);
 
         emit ParticipateShort(msg.sender, epoch, amount);
@@ -194,10 +194,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @param epoch: epoch
      */
     function participateLong(uint256 epoch, uint256 _amount) external whenNotPaused nonReentrant notContract {
-        require(epoch == currentEpoch, "Bet is too early/late");
+        require(epoch == currentEpoch, "Participate is too early/late");
         require(_bettable(epoch), "Round not bettable");
-        require(_amount >= minParticipateAmount, "Bet amount must be greater than minParticipateAmount");
-        require(ledger[epoch][msg.sender].amount == 0, "Can only bet once per round");
+        require(_amount >= minParticipateAmount, "Participate amount must be greater than minParticipateAmount");
+        require(ledger[epoch][msg.sender].amount == 0, "Can only participate once per round");
 
         token.safeTransferFrom(msg.sender, address(this), _amount);
         // Update round data
@@ -207,9 +207,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         round.bullAmount = round.bullAmount + amount;
 
         // Update user data
-        BetInfo storage betInfo = ledger[epoch][msg.sender];
-        betInfo.position = Position.Bull;
-        betInfo.amount = amount;
+        ParticipateInfo storage participateInfo = ledger[epoch][msg.sender];
+        participateInfo.position = Position.Bull;
+        participateInfo.amount = amount;
         userRounds[msg.sender].push(epoch);
 
         emit ParticipateLong(msg.sender, epoch, amount);
@@ -234,7 +234,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 Round memory round = rounds[epochs[i]];
                 addedReward = (ledger[epochs[i]][msg.sender].amount * round.rewardAmount) / round.rewardBaseCalAmount;
             }
-            // Round invalid, refund bet amount
+            // Round invalid, refund Participate amount
             else {
                 require(refundable(epochs[i], msg.sender), "Not eligible for refund");
                 addedReward = ledger[epochs[i]][msg.sender].amount;
@@ -448,7 +448,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Returns round epochs and bet information for a user that has participated
+     * @notice Returns round epochs and participate information for a user that has participated
      * @param user: user address
      * @param cursor: cursor
      * @param size: size
@@ -462,7 +462,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         view
         returns (
             uint256[] memory,
-            BetInfo[] memory,
+            ParticipateInfo[] memory,
             uint256
         )
     {
@@ -473,14 +473,14 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         }
 
         uint256[] memory values = new uint256[](length);
-        BetInfo[] memory betInfo = new BetInfo[](length);
+        ParticipateInfo[] memory participateInfo = new ParticipateInfo[](length);
 
         for (uint256 i = 0; i < length; i++) {
             values[i] = userRounds[user][cursor + i];
-            betInfo[i] = ledger[values[i]][user];
+            participateInfo[i] = ledger[values[i]][user];
         }
 
-        return (values, betInfo, cursor + length);
+        return (values, participateInfo, cursor + length);
     }
 
     /**
@@ -497,17 +497,17 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @param user: user address
      */
     function claimable(uint256 epoch, address user) public view returns (bool) {
-        BetInfo memory betInfo = ledger[epoch][user];
+        ParticipateInfo memory participateInfo = ledger[epoch][user];
         Round memory round = rounds[epoch];
         if (round.lockPrice == round.closePrice) {
             return false;
         }
         return
             round.oracleCalled &&
-            betInfo.amount != 0 &&
-            !betInfo.claimed &&
-            ((round.closePrice > round.lockPrice && betInfo.position == Position.Bull) ||
-                (round.closePrice < round.lockPrice && betInfo.position == Position.Bear));
+            participateInfo.amount != 0 &&
+            !participateInfo.claimed &&
+            ((round.closePrice > round.lockPrice && participateInfo.position == Position.Bull) ||
+                (round.closePrice < round.lockPrice && participateInfo.position == Position.Bear));
     }
 
     /**
@@ -516,13 +516,13 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @param user: user address
      */
     function refundable(uint256 epoch, address user) public view returns (bool) {
-        BetInfo memory betInfo = ledger[epoch][user];
+        ParticipateInfo memory participateInfo = ledger[epoch][user];
         Round memory round = rounds[epoch];
         return
             !round.oracleCalled &&
-            !betInfo.claimed &&
+            !participateInfo.claimed &&
             block.timestamp > round.closeTimestamp + bufferSeconds &&
-            betInfo.amount != 0;
+            participateInfo.amount != 0;
     }
 
     /**
