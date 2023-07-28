@@ -915,9 +915,9 @@ contract(
     });
 
     it("Should reject operator functions when not operator", async () => {
-      await expectRevert(prediction.genesisLockRound({ from: admin }), "Not operator");
-      await expectRevert(prediction.genesisStartRound({ from: admin }), "Not operator");
-      await expectRevert(prediction.executeRound({ from: admin }), "Not operator");
+      await expectRevert(prediction.genesisLockRound({ from: admin }), "Not keeper/operator");
+      await expectRevert(prediction.genesisStartRound({ from: admin }), "Not keeper/operator");
+      await expectRevert(prediction.executeRound({ from: admin }), "Not keeper/operator");
     });
 
     it("Should reject admin/owner functions when not admin/owner", async () => {

@@ -1,4 +1,3 @@
-/* eslint-disable import/no-unresolved */
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-etherscan";

@@ -8,7 +8,6 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "hardhat/console.sol";
 
 /**
  * @title StVol
@@ -25,6 +24,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
     address public adminAddress; // address of the admin
     address public operatorAddress; // address of the operator
+    address public keeperAddress; // address of the keeper
 
     uint256 public bufferSeconds; // number of seconds for valid execution of a prediction round
     uint256 public intervalSeconds; // interval in seconds between two prediction rounds
@@ -33,7 +33,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     uint256 public treasuryFee; // treasury rate (e.g. 200 = 2%, 150 = 1.50%)
     uint256 public treasuryAmount; // treasury amount that was not claimed
 
-    uint256 public currentEpoch; // current epoch for prediction round
+    uint256 public currentEpoch; // current epoch for round
 
     uint256 public oracleLatestRoundId; // converted from uint80 (Chainlink)
     uint256 public oracleUpdateAllowance; // seconds
@@ -85,6 +85,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     event NewOperatorAddress(address operator);
     event NewOracle(address oracle);
     event NewOracleUpdateAllowance(uint256 oracleUpdateAllowance);
+    event NewKeeperAddress(address operator);
 
     event Pause(uint256 indexed epoch);
     event RewardsCalculated(
@@ -104,11 +105,17 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         _;
     }
 
-    modifier onlyAdminOrOperator() {
-        require(msg.sender == adminAddress || msg.sender == operatorAddress, "Not operator/admin");
+    modifier onlyAdminOrOperatorOrKeeper() {
+        require(
+            msg.sender == adminAddress || msg.sender == operatorAddress || msg.sender == keeperAddress,
+            "Not operator/admin/keeper"
+        );
         _;
     }
-
+    modifier onlyKeeperOrOperator() {
+        require(msg.sender == keeperAddress || msg.sender == operatorAddress, "Not keeper/operator");
+        _;
+    }
     modifier onlyOperator() {
         require(msg.sender == operatorAddress, "Not operator");
         _;
@@ -248,7 +255,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @notice Start the next round n, lock price for round n-1, end round n-2
      * @dev Callable by operator
      */
-    function executeRound() external whenNotPaused onlyOperator {
+    function executeRound() external whenNotPaused onlyKeeperOrOperator {
         require(
             genesisStartOnce && genesisLockOnce,
             "Can only run after genesisStartRound and genesisLockRound is triggered"
@@ -272,7 +279,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @notice Lock genesis round
      * @dev Callable by operator
      */
-    function genesisLockRound() external whenNotPaused onlyOperator {
+    function genesisLockRound() external whenNotPaused onlyKeeperOrOperator {
         require(genesisStartOnce, "Can only run after genesisStartRound is triggered");
         require(!genesisLockOnce, "Can only run genesisLockRound once");
 
@@ -291,7 +298,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @notice Start genesis round
      * @dev Callable by admin or operator
      */
-    function genesisStartRound() external whenNotPaused onlyOperator {
+    function genesisStartRound() external whenNotPaused onlyKeeperOrOperator {
         require(!genesisStartOnce, "Can only run genesisStartRound once");
 
         currentEpoch = currentEpoch + 1;
@@ -303,7 +310,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @notice called by the admin to pause, triggers stopped state
      * @dev Callable by admin or operator
      */
-    function pause() external whenNotPaused onlyAdminOrOperator {
+    function pause() external whenNotPaused onlyAdminOrOperatorOrKeeper {
         _pause();
 
         emit Pause(currentEpoch);
@@ -323,9 +330,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     /**
      * @notice called by the admin to unpause, returns to normal state
      * Reset genesis state. Once paused, the rounds would need to be kickstarted by genesis
-     * @dev Callable by admin or operator
+     * @dev Callable by admin or operator or keeper
      */
-    function unpause() external whenPaused onlyAdminOrOperator {
+    function unpause() external whenPaused onlyAdminOrOperatorOrKeeper {
         genesisStartOnce = false;
         genesisLockOnce = false;
         _unpause();
@@ -370,7 +377,16 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
         emit NewOperatorAddress(_operatorAddress);
     }
+    /**
+     * @notice Set keeper address
+     * @dev Callable by admin
+     */
+    function setKeeper(address _keeperAddress) external onlyAdmin {
+        require(_keeperAddress != address(0), "Cannot be zero address");
+        keeperAddress = _keeperAddress;
 
+        emit NewKeeperAddress(_keeperAddress);
+    }
     /**
      * @notice Set Oracle address
      * @dev Callable by admin
@@ -520,13 +536,13 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 treasuryAmt;
         uint256 rewardAmount;
 
-        // Bull wins
+        // Long wins
         if (round.closePrice > round.lockPrice) {
             rewardBaseCalAmount = round.bullAmount;
             treasuryAmt = (round.totalAmount * treasuryFee) / 10000;
             rewardAmount = round.totalAmount - treasuryAmt;
         }
-        // Bear wins
+        // Short wins
         else if (round.closePrice < round.lockPrice) {
             rewardBaseCalAmount = round.bearAmount;
             treasuryAmt = (round.totalAmount * treasuryFee) / 10000;
