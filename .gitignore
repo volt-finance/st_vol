@@ -1,0 +1,8 @@
+node_modules
+typechain
+.secret
+.env
+coverage.json
+coverage
+artifacts
+cache
