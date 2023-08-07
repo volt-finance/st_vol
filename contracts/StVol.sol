@@ -45,8 +45,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     mapping(address => uint256[]) public userRounds;
 
     enum Position {
-        Bull,
-        Bear
+        Over,
+        Under
     }
 
     struct Round {
@@ -72,8 +72,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         bool claimed; // default false
     }
 
-    event ParticipateShort(address indexed sender, uint256 indexed epoch, uint256 amount);
-    event ParticipateLong(address indexed sender, uint256 indexed epoch, uint256 amount);
+    event ParticipateUnder(address indexed sender, uint256 indexed epoch, uint256 amount);
+    event ParticipateOver(address indexed sender, uint256 indexed epoch, uint256 amount);
     event Claim(address indexed sender, uint256 indexed epoch, uint256 amount);
     event EndRound(uint256 indexed epoch, uint256 indexed roundId, int256 price);
     event StartRound(uint256 indexed epoch, uint256 indexed roundId, int256 price);
@@ -164,10 +164,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Participate Short position
+     * @notice Participate under position
      * @param epoch: epoch
      */
-    function participateShort(uint256 epoch, uint256 _amount) external whenNotPaused nonReentrant notContract {
+    function participateUnder(uint256 epoch, uint256 _amount) external whenNotPaused nonReentrant notContract {
         require(epoch == currentEpoch, "Participate is too early/late");
         require(_participable(epoch), "Round not participable");
         require(_amount >= minParticipateAmount, "Participate amount must be greater than minParticipateAmount");
@@ -182,18 +182,18 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
         // Update user data
         ParticipateInfo storage participateInfo = ledger[epoch][msg.sender];
-        participateInfo.position = Position.Bear;
+        participateInfo.position = Position.Under;
         participateInfo.amount = amount;
         userRounds[msg.sender].push(epoch);
 
-        emit ParticipateShort(msg.sender, epoch, amount);
+        emit ParticipateUnder(msg.sender, epoch, amount);
     }
 
     /**
-     * @notice Participate long position
+     * @notice Participate over position
      * @param epoch: epoch
      */
-    function participateLong(uint256 epoch, uint256 _amount) external whenNotPaused nonReentrant notContract {
+    function participateOver(uint256 epoch, uint256 _amount) external whenNotPaused nonReentrant notContract {
         require(epoch == currentEpoch, "Participate is too early/late");
         require(_participable(epoch), "Round not participable");
         require(_amount >= minParticipateAmount, "Participate amount must be greater than minParticipateAmount");
@@ -208,11 +208,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
         // Update user data
         ParticipateInfo storage participateInfo = ledger[epoch][msg.sender];
-        participateInfo.position = Position.Bull;
+        participateInfo.position = Position.Over;
         participateInfo.amount = amount;
         userRounds[msg.sender].push(epoch);
 
-        emit ParticipateLong(msg.sender, epoch, amount);
+        emit ParticipateOver(msg.sender, epoch, amount);
     }
 
     /**
@@ -506,8 +506,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             round.oracleCalled &&
             participateInfo.amount != 0 &&
             !participateInfo.claimed &&
-            ((round.closePrice > round.startPrice && participateInfo.position == Position.Bull) ||
-                (round.closePrice < round.startPrice && participateInfo.position == Position.Bear));
+            ((round.closePrice > round.startPrice && participateInfo.position == Position.Over) ||
+                (round.closePrice < round.startPrice && participateInfo.position == Position.Under));
     }
 
     /**
@@ -536,13 +536,13 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 treasuryAmt;
         uint256 rewardAmount;
 
-        // Long wins
+        // Over wins
         if (round.closePrice > round.startPrice) {
             rewardBaseCalAmount = round.bullAmount;
             treasuryAmt = (round.totalAmount * treasuryFee) / 10000;
             rewardAmount = round.totalAmount - treasuryAmt;
         }
-        // Short wins
+        // Under wins
         else if (round.closePrice < round.startPrice) {
             rewardBaseCalAmount = round.bearAmount;
             treasuryAmt = (round.totalAmount * treasuryFee) / 10000;

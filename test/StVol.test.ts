@@ -19,10 +19,10 @@ const UPDATE_ALLOWANCE = 30 * BLOCK_COUNT_MULTPLIER; // 30s * multiplier
 const INITIAL_REWARD_RATE = 0.9; // 90%
 const INITIAL_TREASURY_RATE = 0.1; // 10%
 
-// Enum: 0 = Bull, 1 = Bear
+// Enum: 0 = Over, 1 = Under
 const Position = {
-  Bull: 0,
-  Bear: 1,
+  Over: 0,
+  Under: 1,
 };
 
 const calcGasCost = (gasUsed: number) => new BN(GAS_PRICE * gasUsed);
@@ -36,7 +36,7 @@ const assertBNArray = (arr1: any[], arr2: any | any[]) => {
 
 contract(
   "StVol",
-  ([operator, admin, owner, bullUser1, bullUser2, bullUser3, bearUser1, bearUser2, bearUser3]) => {
+  ([operator, admin, owner, overUser1, overUser2, overUser3, underUser1, underUser2, underUser3]) => {
     // mock usdc total supply
     const _totalInitSupply = ether("10000000000");
     let currentEpoch: any;
@@ -54,12 +54,12 @@ contract(
       // mint usdc for test accounts
       const MintAmount = ether("100"); // 100 USDC
 
-      mockUsdc.mintTokens(MintAmount, { from: bullUser1 });
-      mockUsdc.mintTokens(MintAmount, { from: bullUser2 });
-      mockUsdc.mintTokens(MintAmount, { from: bullUser3 });
-      mockUsdc.mintTokens(MintAmount, { from: bearUser1 });
-      mockUsdc.mintTokens(MintAmount, { from: bearUser2 });
-      mockUsdc.mintTokens(MintAmount, { from: bearUser3 });
+      mockUsdc.mintTokens(MintAmount, { from: overUser1 });
+      mockUsdc.mintTokens(MintAmount, { from: overUser2 });
+      mockUsdc.mintTokens(MintAmount, { from: overUser3 });
+      mockUsdc.mintTokens(MintAmount, { from: underUser1 });
+      mockUsdc.mintTokens(MintAmount, { from: underUser2 });
+      mockUsdc.mintTokens(MintAmount, { from: underUser3 });
 
       oracle = await Oracle.new(DECIMALS, INITIAL_PRICE);
 
@@ -76,12 +76,12 @@ contract(
         { from: owner }
       );
       // approve usdc amount for stVol contract
-      mockUsdc.approve(stVol.address, ethers.constants.MaxUint256, { from: bullUser1 });
-      mockUsdc.approve(stVol.address, ethers.constants.MaxUint256, { from: bullUser2 });
-      mockUsdc.approve(stVol.address, ethers.constants.MaxUint256, { from: bullUser3 });
-      mockUsdc.approve(stVol.address, ethers.constants.MaxUint256, { from: bearUser1 });
-      mockUsdc.approve(stVol.address, ethers.constants.MaxUint256, { from: bearUser2 });
-      mockUsdc.approve(stVol.address, ethers.constants.MaxUint256, { from: bearUser3 });
+      mockUsdc.approve(stVol.address, ethers.constants.MaxUint256, { from: overUser1 });
+      mockUsdc.approve(stVol.address, ethers.constants.MaxUint256, { from: overUser2 });
+      mockUsdc.approve(stVol.address, ethers.constants.MaxUint256, { from: overUser3 });
+      mockUsdc.approve(stVol.address, ethers.constants.MaxUint256, { from: underUser1 });
+      mockUsdc.approve(stVol.address, ethers.constants.MaxUint256, { from: underUser2 });
+      mockUsdc.approve(stVol.address, ethers.constants.MaxUint256, { from: underUser3 });
     });
 
     it("Initialize", async () => {
@@ -204,11 +204,11 @@ contract(
 
     it("Should not lock round before startTimestamp and end round before closeTimestamp", async () => {
       await stVol.genesisOpenRound();
-      await expectRevert(stVol.genesisStartRound(), "Can only lock round after startTimestamp");
+      await expectRevert(stVol.genesisStartRound(), "Can only start round after startTimestamp");
       await nextEpoch();
       await stVol.genesisStartRound();
       await oracle.updateAnswer(INITIAL_PRICE); // To update Oracle roundId
-      await expectRevert(stVol.executeRound(), "Can only lock round after startTimestamp");
+      await expectRevert(stVol.executeRound(), "Can only start round after startTimestamp");
 
       await nextEpoch();
       await stVol.executeRound(); // Success
@@ -275,48 +275,48 @@ contract(
       await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("1.1"), { from: bullUser1 }); // 1.1 USDC
-      await stVol.participateLong(currentEpoch, ether("1.2"), { from: bullUser2 }); // 1.2 USDC
-      await stVol.participateShort(currentEpoch, ether("1.4"), { from: bearUser1 }); // 1.4 USDC
+      await stVol.participateOver(currentEpoch, ether("1.1"), { from: overUser1 }); // 1.1 USDC
+      await stVol.participateOver(currentEpoch, ether("1.2"), { from: overUser2 }); // 1.2 USDC
+      await stVol.participateUnder(currentEpoch, ether("1.4"), { from: underUser1 }); // 1.4 USDC
 
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("3.7").toString()); // 3.7 USDC
       assert.equal((await stVol.rounds(1)).totalAmount, ether("3.7").toString()); // 3.7 USDC
       assert.equal((await stVol.rounds(1)).bullAmount, ether("2.3").toString()); // 2.3 USDC
       assert.equal((await stVol.rounds(1)).bearAmount, ether("1.4").toString()); // 1.4 USDC
-      assert.equal((await stVol.ledger(1, bullUser1)).position, Position.Bull);
-      assert.equal((await stVol.ledger(1, bullUser1)).amount, ether("1.1").toString());
-      assert.equal((await stVol.ledger(1, bullUser2)).position, Position.Bull);
-      assert.equal((await stVol.ledger(1, bullUser2)).amount, ether("1.2").toString());
-      assert.equal((await stVol.ledger(1, bearUser1)).position, Position.Bear);
-      assert.equal((await stVol.ledger(1, bearUser1)).amount, ether("1.4").toString());
-      assertBNArray((await stVol.getUserRounds(bullUser1, 0, 1))[0], [1]);
-      assertBNArray((await stVol.getUserRounds(bullUser2, 0, 1))[0], [1]);
-      assertBNArray((await stVol.getUserRounds(bearUser1, 0, 1))[0], [1]);
-      assert.equal(await stVol.getUserRoundsLength(bullUser1), 1);
+      assert.equal((await stVol.ledger(1, overUser1)).position, Position.Over);
+      assert.equal((await stVol.ledger(1, overUser1)).amount, ether("1.1").toString());
+      assert.equal((await stVol.ledger(1, overUser2)).position, Position.Over);
+      assert.equal((await stVol.ledger(1, overUser2)).amount, ether("1.2").toString());
+      assert.equal((await stVol.ledger(1, underUser1)).position, Position.Under);
+      assert.equal((await stVol.ledger(1, underUser1)).amount, ether("1.4").toString());
+      assertBNArray((await stVol.getUserRounds(overUser1, 0, 1))[0], [1]);
+      assertBNArray((await stVol.getUserRounds(overUser2, 0, 1))[0], [1]);
+      assertBNArray((await stVol.getUserRounds(underUser1, 0, 1))[0], [1]);
+      assert.equal(await stVol.getUserRoundsLength(overUser1), 1);
 
       // Epoch 2
       await nextEpoch();
       await stVol.genesisStartRound(); // For round 1
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("2.1"), { from: bullUser1 }); // 2.1 USDC
-      await stVol.participateLong(currentEpoch, ether("2.2"), { from: bullUser2 }); // 2.2 USDC
-      await stVol.participateShort(currentEpoch, ether("2.4"), { from: bearUser1 }); // 2.4 USDC
+      await stVol.participateOver(currentEpoch, ether("2.1"), { from: overUser1 }); // 2.1 USDC
+      await stVol.participateOver(currentEpoch, ether("2.2"), { from: overUser2 }); // 2.2 USDC
+      await stVol.participateUnder(currentEpoch, ether("2.4"), { from: underUser1 }); // 2.4 USDC
 
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("10.4").toString()); // 10.4 USDC (3.7+6.7)
       assert.equal((await stVol.rounds(2)).totalAmount, ether("6.7").toString()); // 6.7 USDC
       assert.equal((await stVol.rounds(2)).bullAmount, ether("4.3").toString()); // 4.3 USDC
       assert.equal((await stVol.rounds(2)).bearAmount, ether("2.4").toString()); // 2.4 USDC
-      assert.equal((await stVol.ledger(2, bullUser1)).position, Position.Bull);
-      assert.equal((await stVol.ledger(2, bullUser1)).amount, ether("2.1").toString());
-      assert.equal((await stVol.ledger(2, bullUser2)).position, Position.Bull);
-      assert.equal((await stVol.ledger(2, bullUser2)).amount, ether("2.2").toString());
-      assert.equal((await stVol.ledger(2, bearUser1)).position, Position.Bear);
-      assert.equal((await stVol.ledger(2, bearUser1)).amount, ether("2.4").toString());
-      assertBNArray((await stVol.getUserRounds(bullUser1, 0, 2))[0], [1, 2]);
-      assertBNArray((await stVol.getUserRounds(bullUser2, 0, 2))[0], [1, 2]);
-      assertBNArray((await stVol.getUserRounds(bearUser1, 0, 2))[0], [1, 2]);
-      assert.equal(await stVol.getUserRoundsLength(bullUser1), 2);
+      assert.equal((await stVol.ledger(2, overUser1)).position, Position.Over);
+      assert.equal((await stVol.ledger(2, overUser1)).amount, ether("2.1").toString());
+      assert.equal((await stVol.ledger(2, overUser2)).position, Position.Over);
+      assert.equal((await stVol.ledger(2, overUser2)).amount, ether("2.2").toString());
+      assert.equal((await stVol.ledger(2, underUser1)).position, Position.Under);
+      assert.equal((await stVol.ledger(2, underUser1)).amount, ether("2.4").toString());
+      assertBNArray((await stVol.getUserRounds(overUser1, 0, 2))[0], [1, 2]);
+      assertBNArray((await stVol.getUserRounds(overUser2, 0, 2))[0], [1, 2]);
+      assertBNArray((await stVol.getUserRounds(underUser1, 0, 2))[0], [1, 2]);
+      assert.equal(await stVol.getUserRoundsLength(overUser1), 2);
 
       // Epoch 3
       await nextEpoch();
@@ -324,24 +324,24 @@ contract(
       await stVol.executeRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("3.1"), { from: bullUser1 }); // 3.1 USDC
-      await stVol.participateLong(currentEpoch, ether("3.2"), { from: bullUser2 }); // 3.2 USDC
-      await stVol.participateShort(currentEpoch, ether("3.4"), { from: bearUser1 }); // 3.4 USDC
+      await stVol.participateOver(currentEpoch, ether("3.1"), { from: overUser1 }); // 3.1 USDC
+      await stVol.participateOver(currentEpoch, ether("3.2"), { from: overUser2 }); // 3.2 USDC
+      await stVol.participateUnder(currentEpoch, ether("3.4"), { from: underUser1 }); // 3.4 USDC
 
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("20.1").toString()); // 20.1 USDC (3.7+6.7+9.7)
       assert.equal((await stVol.rounds(3)).totalAmount, ether("9.7").toString()); // 9.7 USDC
       assert.equal((await stVol.rounds(3)).bullAmount, ether("6.3").toString()); // 6.3 USDC
       assert.equal((await stVol.rounds(3)).bearAmount, ether("3.4").toString()); // 3.4 USDC
-      assert.equal((await stVol.ledger(3, bullUser1)).position, Position.Bull);
-      assert.equal((await stVol.ledger(3, bullUser1)).amount, ether("3.1").toString());
-      assert.equal((await stVol.ledger(3, bullUser2)).position, Position.Bull);
-      assert.equal((await stVol.ledger(3, bullUser2)).amount, ether("3.2").toString());
-      assert.equal((await stVol.ledger(3, bearUser1)).position, Position.Bear);
-      assert.equal((await stVol.ledger(3, bearUser1)).amount, ether("3.4").toString());
-      assertBNArray((await stVol.getUserRounds(bullUser1, 0, 3))[0], [1, 2, 3]);
-      assertBNArray((await stVol.getUserRounds(bullUser2, 0, 3))[0], [1, 2, 3]);
-      assertBNArray((await stVol.getUserRounds(bearUser1, 0, 3))[0], [1, 2, 3]);
-      assert.equal(await stVol.getUserRoundsLength(bullUser1), 3);
+      assert.equal((await stVol.ledger(3, overUser1)).position, Position.Over);
+      assert.equal((await stVol.ledger(3, overUser1)).amount, ether("3.1").toString());
+      assert.equal((await stVol.ledger(3, overUser2)).position, Position.Over);
+      assert.equal((await stVol.ledger(3, overUser2)).amount, ether("3.2").toString());
+      assert.equal((await stVol.ledger(3, underUser1)).position, Position.Under);
+      assert.equal((await stVol.ledger(3, underUser1)).amount, ether("3.4").toString());
+      assertBNArray((await stVol.getUserRounds(overUser1, 0, 3))[0], [1, 2, 3]);
+      assertBNArray((await stVol.getUserRounds(overUser2, 0, 3))[0], [1, 2, 3]);
+      assertBNArray((await stVol.getUserRounds(underUser1, 0, 3))[0], [1, 2, 3]);
+      assert.equal(await stVol.getUserRoundsLength(overUser1), 3);
 
       // Epoch 4
       await nextEpoch();
@@ -349,24 +349,24 @@ contract(
       await stVol.executeRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("4.1"), { from: bullUser1 }); // 4.1 USDC
-      await stVol.participateLong(currentEpoch, ether("4.2"), { from: bullUser2 }); // 4.2 USDC
-      await stVol.participateShort(currentEpoch, ether("4.4"), { from: bearUser1 }); // 4.4 USDC
+      await stVol.participateOver(currentEpoch, ether("4.1"), { from: overUser1 }); // 4.1 USDC
+      await stVol.participateOver(currentEpoch, ether("4.2"), { from: overUser2 }); // 4.2 USDC
+      await stVol.participateUnder(currentEpoch, ether("4.4"), { from: underUser1 }); // 4.4 USDC
 
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("32.8").toString()); // 32.8 USDC (3.7+6.7+9.7+12.7)
       assert.equal((await stVol.rounds(4)).totalAmount, ether("12.7").toString()); // 12.7 USDC
       assert.equal((await stVol.rounds(4)).bullAmount, ether("8.3").toString()); // 8.3 USDC
       assert.equal((await stVol.rounds(4)).bearAmount, ether("4.4").toString()); // 4.4 USDC
-      assert.equal((await stVol.ledger(4, bullUser1)).position, Position.Bull);
-      assert.equal((await stVol.ledger(4, bullUser1)).amount, ether("4.1").toString());
-      assert.equal((await stVol.ledger(4, bullUser2)).position, Position.Bull);
-      assert.equal((await stVol.ledger(4, bullUser2)).amount, ether("4.2").toString());
-      assert.equal((await stVol.ledger(4, bearUser1)).position, Position.Bear);
-      assert.equal((await stVol.ledger(4, bearUser1)).amount, ether("4.4").toString());
-      assertBNArray((await stVol.getUserRounds(bullUser1, 0, 4))[0], [1, 2, 3, 4]);
-      assertBNArray((await stVol.getUserRounds(bullUser2, 0, 4))[0], [1, 2, 3, 4]);
-      assertBNArray((await stVol.getUserRounds(bearUser1, 0, 4))[0], [1, 2, 3, 4]);
-      assert.equal(await stVol.getUserRoundsLength(bullUser1), 4);
+      assert.equal((await stVol.ledger(4, overUser1)).position, Position.Over);
+      assert.equal((await stVol.ledger(4, overUser1)).amount, ether("4.1").toString());
+      assert.equal((await stVol.ledger(4, overUser2)).position, Position.Over);
+      assert.equal((await stVol.ledger(4, overUser2)).amount, ether("4.2").toString());
+      assert.equal((await stVol.ledger(4, underUser1)).position, Position.Under);
+      assert.equal((await stVol.ledger(4, underUser1)).amount, ether("4.4").toString());
+      assertBNArray((await stVol.getUserRounds(overUser1, 0, 4))[0], [1, 2, 3, 4]);
+      assertBNArray((await stVol.getUserRounds(overUser2, 0, 4))[0], [1, 2, 3, 4]);
+      assertBNArray((await stVol.getUserRounds(underUser1, 0, 4))[0], [1, 2, 3, 4]);
+      assert.equal(await stVol.getUserRoundsLength(overUser1), 4);
     });
 
     it("Should not allow multiple participates", async () => {
@@ -374,22 +374,22 @@ contract(
       await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // Success
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }); // Success
       await expectRevert(
-        stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }),
+        stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }),
         "Can only participate once per round"
       );
       await expectRevert(
-        stVol.participateShort(currentEpoch, ether("1"), { from: bullUser1 }),
+        stVol.participateUnder(currentEpoch, ether("1"), { from: overUser1 }),
         "Can only participate once per round"
       );
-      await stVol.participateShort(currentEpoch, ether("1"), { from: bearUser1 }); // Success
+      await stVol.participateUnder(currentEpoch, ether("1"), { from: underUser1 }); // Success
       await expectRevert(
-        stVol.participateLong(currentEpoch, ether("1"), { from: bearUser1 }),
+        stVol.participateOver(currentEpoch, ether("1"), { from: underUser1 }),
         "Can only participate once per round"
       );
       await expectRevert(
-        stVol.participateShort(currentEpoch, ether("1"), { from: bearUser1 }),
+        stVol.participateUnder(currentEpoch, ether("1"), { from: underUser1 }),
         "Can only participate once per round"
       );
 
@@ -398,22 +398,22 @@ contract(
       await stVol.genesisStartRound(); // For round 1
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // Success
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }); // Success
       await expectRevert(
-        stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }),
+        stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }),
         "Can only participate once per round"
       );
       await expectRevert(
-        stVol.participateShort(currentEpoch, ether("1"), { from: bullUser1 }),
+        stVol.participateUnder(currentEpoch, ether("1"), { from: overUser1 }),
         "Can only participate once per round"
       );
-      await stVol.participateShort(currentEpoch, ether("1"), { from: bearUser1 }); // Success
+      await stVol.participateUnder(currentEpoch, ether("1"), { from: underUser1 }); // Success
       await expectRevert(
-        stVol.participateLong(currentEpoch, ether("1"), { from: bearUser1 }),
+        stVol.participateOver(currentEpoch, ether("1"), { from: underUser1 }),
         "Can only participate once per round"
       );
       await expectRevert(
-        stVol.participateShort(currentEpoch, ether("1"), { from: bearUser1 }),
+        stVol.participateUnder(currentEpoch, ether("1"), { from: underUser1 }),
         "Can only participate once per round"
       );
 
@@ -423,22 +423,22 @@ contract(
       await stVol.executeRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // Success
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }); // Success
       await expectRevert(
-        stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }),
+        stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }),
         "Can only participate once per round"
       );
       await expectRevert(
-        stVol.participateShort(currentEpoch, ether("1"), { from: bullUser1 }),
+        stVol.participateUnder(currentEpoch, ether("1"), { from: overUser1 }),
         "Can only participate once per round"
       );
-      await stVol.participateShort(currentEpoch, ether("1"), { from: bearUser1 }); // Success
+      await stVol.participateUnder(currentEpoch, ether("1"), { from: underUser1 }); // Success
       await expectRevert(
-        stVol.participateLong(currentEpoch, ether("1"), { from: bearUser1 }),
+        stVol.participateOver(currentEpoch, ether("1"), { from: underUser1 }),
         "Can only participate once per round"
       );
       await expectRevert(
-        stVol.participateShort(currentEpoch, ether("1"), { from: bearUser1 }),
+        stVol.participateUnder(currentEpoch, ether("1"), { from: underUser1 }),
         "Can only participate once per round"
       );
     });
@@ -449,10 +449,10 @@ contract(
       currentEpoch = await stVol.currentEpoch();
 
       await expectRevert(
-        stVol.participateLong(currentEpoch, ether("0.5"), { from: bullUser1 }),
+        stVol.participateOver(currentEpoch, ether("0.5"), { from: overUser1 }),
         "Participate amount must be greater than minParticipateAmount"
       ); // 0.5 USDC
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // Success
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }); // Success
 
       // Epoch 2
       await nextEpoch();
@@ -460,10 +460,10 @@ contract(
       currentEpoch = await stVol.currentEpoch();
 
       await expectRevert(
-        stVol.participateLong(currentEpoch, ether("0.5"), { from: bullUser1 }),
+        stVol.participateOver(currentEpoch, ether("0.5"), { from: overUser1 }),
         "Participate amount must be greater than minParticipateAmount"
       ); // 0.5 USDC
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // Success
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }); // Success
 
       // Epoch 3
       await nextEpoch();
@@ -472,10 +472,10 @@ contract(
       currentEpoch = await stVol.currentEpoch();
 
       await expectRevert(
-        stVol.participateLong(currentEpoch, ether("0.5"), { from: bullUser1 }),
+        stVol.participateOver(currentEpoch, ether("0.5"), { from: overUser1 }),
         "Participate amount must be greater than minParticipateAmount"
       ); // 0.5 USDC
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // Success
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }); // Success
     });
 
     it("Should record rewards", async () => {
@@ -485,9 +485,9 @@ contract(
       await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("1.1"), { from: bullUser1 }); // 1.1 USDC
-      await stVol.participateLong(currentEpoch, ether("1.2"), { from: bullUser2 }); // 1.2 USDC
-      await stVol.participateShort(currentEpoch, ether("1.4"), { from: bearUser1 }); // 1.4 USDC
+      await stVol.participateOver(currentEpoch, ether("1.1"), { from: overUser1 }); // 1.1 USDC
+      await stVol.participateOver(currentEpoch, ether("1.2"), { from: overUser2 }); // 1.2 USDC
+      await stVol.participateUnder(currentEpoch, ether("1.4"), { from: underUser1 }); // 1.4 USDC
 
       assert.equal((await stVol.rounds(1)).rewardBaseCalAmount, 0);
       assert.equal((await stVol.rounds(1)).rewardAmount, 0);
@@ -501,9 +501,9 @@ contract(
       await stVol.genesisStartRound(); // For round 1
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("2.1"), { from: bullUser1 }); // 2.1 USDC
-      await stVol.participateLong(currentEpoch, ether("2.2"), { from: bullUser2 }); // 2.2 USDC
-      await stVol.participateShort(currentEpoch, ether("2.4"), { from: bearUser1 }); // 2.4 USDC
+      await stVol.participateOver(currentEpoch, ether("2.1"), { from: overUser1 }); // 2.1 USDC
+      await stVol.participateOver(currentEpoch, ether("2.2"), { from: overUser2 }); // 2.2 USDC
+      await stVol.participateUnder(currentEpoch, ether("2.4"), { from: underUser1 }); // 2.4 USDC
 
       assert.equal((await stVol.rounds(1)).rewardBaseCalAmount, 0);
       assert.equal((await stVol.rounds(1)).rewardAmount, 0);
@@ -522,9 +522,9 @@ contract(
       await stVol.executeRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("3.1"), { from: bullUser1 }); // 3.1 USDC
-      await stVol.participateLong(currentEpoch, ether("3.2"), { from: bullUser2 }); // 3.2 USDC
-      await stVol.participateShort(currentEpoch, ether("3.4"), { from: bearUser1 }); // 3.4 USDC
+      await stVol.participateOver(currentEpoch, ether("3.1"), { from: overUser1 }); // 3.1 USDC
+      await stVol.participateOver(currentEpoch, ether("3.2"), { from: overUser2 }); // 3.2 USDC
+      await stVol.participateUnder(currentEpoch, ether("3.4"), { from: underUser1 }); // 3.4 USDC
 
       assert.equal((await stVol.rounds(1)).rewardBaseCalAmount, ether("2.3").toString()); // 2.3 USDC, Bull total
       assert.equal((await stVol.rounds(1)).rewardAmount, ether("3.7") * INITIAL_REWARD_RATE); // 3.33 USDC, Total * rewardRate
@@ -543,9 +543,9 @@ contract(
       await stVol.executeRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("4.1"), { from: bullUser1 }); // 4.1 USDC
-      await stVol.participateLong(currentEpoch, ether("4.2"), { from: bullUser2 }); // 4.2 USDC
-      await stVol.participateShort(currentEpoch, ether("4.4"), { from: bearUser1 }); // 4.4 USDC
+      await stVol.participateOver(currentEpoch, ether("4.1"), { from: overUser1 }); // 4.1 USDC
+      await stVol.participateOver(currentEpoch, ether("4.2"), { from: overUser2 }); // 4.2 USDC
+      await stVol.participateUnder(currentEpoch, ether("4.4"), { from: underUser1 }); // 4.4 USDC
 
       assert.equal((await stVol.rounds(1)).rewardBaseCalAmount, ether("2.3").toString()); // 2.3 USDC, Bull total
       assert.equal((await stVol.rounds(1)).rewardAmount, ether("3.7") * INITIAL_REWARD_RATE); // 3.33 USDC, Total * rewardRate
@@ -567,7 +567,7 @@ contract(
       await stVol.executeRound();
 
       await oracle.updateAnswer(INITIAL_PRICE); // To update Oracle roundId
-      await expectRevert(stVol.executeRound(), "Can only lock round after startTimestamp");
+      await expectRevert(stVol.executeRound(), "Can only start round after startTimestamp");
       await nextEpoch();
       await stVol.executeRound(); // Success
     });
@@ -579,19 +579,19 @@ contract(
       await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // 1 USDC
-      await stVol.participateLong(currentEpoch, ether("2"), { from: bullUser2 }); // 2 USDC
-      await stVol.participateShort(currentEpoch, ether("4"), { from: bearUser1 }); // 4 USDC
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }); // 1 USDC
+      await stVol.participateOver(currentEpoch, ether("2"), { from: overUser2 }); // 2 USDC
+      await stVol.participateUnder(currentEpoch, ether("4"), { from: underUser1 }); // 4 USDC
 
-      assert.equal(await stVol.claimable(1, bullUser1), false);
-      assert.equal(await stVol.claimable(1, bullUser2), false);
-      assert.equal(await stVol.claimable(1, bearUser1), false);
-      await expectRevert(stVol.claim([1], { from: bullUser1 }), "Round has not ended");
-      await expectRevert(stVol.claim([1], { from: bullUser2 }), "Round has not ended");
-      await expectRevert(stVol.claim([1], { from: bearUser1 }), "Round has not ended");
-      await expectRevert(stVol.claim([2], { from: bullUser1 }), "Round has not started");
-      await expectRevert(stVol.claim([2], { from: bullUser2 }), "Round has not started");
-      await expectRevert(stVol.claim([2], { from: bearUser1 }), "Round has not started");
+      assert.equal(await stVol.claimable(1, overUser1), false);
+      assert.equal(await stVol.claimable(1, overUser2), false);
+      assert.equal(await stVol.claimable(1, underUser1), false);
+      await expectRevert(stVol.claim([1], { from: overUser1 }), "Round has not ended");
+      await expectRevert(stVol.claim([1], { from: overUser2 }), "Round has not ended");
+      await expectRevert(stVol.claim([1], { from: underUser1 }), "Round has not ended");
+      await expectRevert(stVol.claim([2], { from: overUser1 }), "Round has not started");
+      await expectRevert(stVol.claim([2], { from: overUser2 }), "Round has not started");
+      await expectRevert(stVol.claim([2], { from: underUser1 }), "Round has not started");
 
       // Epoch 2
       await nextEpoch();
@@ -600,22 +600,22 @@ contract(
       await stVol.genesisStartRound(); // For round 1
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("21"), { from: bullUser1 }); // 21 USDC
-      await stVol.participateLong(currentEpoch, ether("22"), { from: bullUser2 }); // 22 USDC
-      await stVol.participateShort(currentEpoch, ether("24"), { from: bearUser1 }); // 24 USDC
+      await stVol.participateOver(currentEpoch, ether("21"), { from: overUser1 }); // 21 USDC
+      await stVol.participateOver(currentEpoch, ether("22"), { from: overUser2 }); // 22 USDC
+      await stVol.participateUnder(currentEpoch, ether("24"), { from: underUser1 }); // 24 USDC
 
-      assert.equal(await stVol.claimable(1, bullUser1), false);
-      assert.equal(await stVol.claimable(1, bullUser2), false);
-      assert.equal(await stVol.claimable(1, bearUser1), false);
-      assert.equal(await stVol.claimable(2, bullUser1), false);
-      assert.equal(await stVol.claimable(2, bullUser2), false);
-      assert.equal(await stVol.claimable(2, bearUser1), false);
-      await expectRevert(stVol.claim([1], { from: bullUser1 }), "Round has not ended");
-      await expectRevert(stVol.claim([1], { from: bullUser2 }), "Round has not ended");
-      await expectRevert(stVol.claim([1], { from: bearUser1 }), "Round has not ended");
-      await expectRevert(stVol.claim([2], { from: bullUser1 }), "Round has not ended");
-      await expectRevert(stVol.claim([2], { from: bullUser2 }), "Round has not ended");
-      await expectRevert(stVol.claim([2], { from: bearUser1 }), "Round has not ended");
+      assert.equal(await stVol.claimable(1, overUser1), false);
+      assert.equal(await stVol.claimable(1, overUser2), false);
+      assert.equal(await stVol.claimable(1, underUser1), false);
+      assert.equal(await stVol.claimable(2, overUser1), false);
+      assert.equal(await stVol.claimable(2, overUser2), false);
+      assert.equal(await stVol.claimable(2, underUser1), false);
+      await expectRevert(stVol.claim([1], { from: overUser1 }), "Round has not ended");
+      await expectRevert(stVol.claim([1], { from: overUser2 }), "Round has not ended");
+      await expectRevert(stVol.claim([1], { from: underUser1 }), "Round has not ended");
+      await expectRevert(stVol.claim([2], { from: overUser1 }), "Round has not ended");
+      await expectRevert(stVol.claim([2], { from: overUser2 }), "Round has not ended");
+      await expectRevert(stVol.claim([2], { from: underUser1 }), "Round has not ended");
 
       // Epoch 3, Round 1 is Bull (130 > 120)
       await nextEpoch();
@@ -623,29 +623,29 @@ contract(
       await oracle.updateAnswer(price130);
       await stVol.executeRound();
 
-      assert.equal(await stVol.claimable(1, bullUser1), true);
-      assert.equal(await stVol.claimable(1, bullUser2), true);
-      assert.equal(await stVol.claimable(1, bearUser1), false);
-      assert.equal(await stVol.claimable(2, bullUser1), false);
-      assert.equal(await stVol.claimable(2, bullUser2), false);
-      assert.equal(await stVol.claimable(2, bearUser1), false);
+      assert.equal(await stVol.claimable(1, overUser1), true);
+      assert.equal(await stVol.claimable(1, overUser2), true);
+      assert.equal(await stVol.claimable(1, underUser1), false);
+      assert.equal(await stVol.claimable(2, overUser1), false);
+      assert.equal(await stVol.claimable(2, overUser2), false);
+      assert.equal(await stVol.claimable(2, underUser1), false);
 
       // Claim for Round 1: Total rewards = 3.7, Bull = 2.3, Bear = 1.4
 
-      let tx = await stVol.claim([1], { from: bullUser1 }); // Success
+      let tx = await stVol.claim([1], { from: overUser1 }); // Success
       let { gasUsed } = tx.receipt;
 
-      expectEvent(tx, "Claim", { sender: bullUser1, epoch: new BN("1"), amount: ether("2.1") }); // 2.1 = 1/3 * (7*0.9)
+      expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("1"), amount: ether("2.1") }); // 2.1 = 1/3 * (7*0.9)
 
-      tx = await stVol.claim([1], { from: bullUser2 }); // Success
+      tx = await stVol.claim([1], { from: overUser2 }); // Success
       gasUsed = tx.receipt.gasUsed;
 
-      expectEvent(tx, "Claim", { sender: bullUser2, epoch: new BN("1"), amount: ether("4.2") }); // 4.2 = 2/3 * (7*0.9)
+      expectEvent(tx, "Claim", { sender: overUser2, epoch: new BN("1"), amount: ether("4.2") }); // 4.2 = 2/3 * (7*0.9)
 
-      await expectRevert(stVol.claim([1], { from: bearUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([2], { from: bullUser1 }), "Round has not ended");
-      await expectRevert(stVol.claim([2], { from: bullUser2 }), "Round has not ended");
-      await expectRevert(stVol.claim([2], { from: bearUser1 }), "Round has not ended");
+      await expectRevert(stVol.claim([1], { from: underUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([2], { from: overUser1 }), "Round has not ended");
+      await expectRevert(stVol.claim([2], { from: overUser2 }), "Round has not ended");
+      await expectRevert(stVol.claim([2], { from: underUser1 }), "Round has not ended");
 
       // Epoch 4, Round 2 is Bear (100 < 130)
       await nextEpoch();
@@ -653,25 +653,25 @@ contract(
       await oracle.updateAnswer(price100);
       await stVol.executeRound();
 
-      assert.equal(await stVol.claimable(1, bullUser1), false); // User has claimed
-      assert.equal(await stVol.claimable(1, bullUser2), false); // User has claimed
-      assert.equal(await stVol.claimable(1, bearUser1), false);
-      assert.equal(await stVol.claimable(2, bullUser1), false);
-      assert.equal(await stVol.claimable(2, bullUser2), false);
-      assert.equal(await stVol.claimable(2, bearUser1), true);
+      assert.equal(await stVol.claimable(1, overUser1), false); // User has claimed
+      assert.equal(await stVol.claimable(1, overUser2), false); // User has claimed
+      assert.equal(await stVol.claimable(1, underUser1), false);
+      assert.equal(await stVol.claimable(2, overUser1), false);
+      assert.equal(await stVol.claimable(2, overUser2), false);
+      assert.equal(await stVol.claimable(2, underUser1), true);
 
       // Claim for Round 2: Total rewards = 67, Bull = 43, Bear = 24
 
-      tx = await stVol.claim([2], { from: bearUser1 }); // Success
+      tx = await stVol.claim([2], { from: underUser1 }); // Success
       gasUsed = tx.receipt.gasUsed;
-      expectEvent(tx, "Claim", { sender: bearUser1, epoch: new BN("2"), amount: ether("60.3") }); // 24 = 24/24 * (67*0.9)
+      expectEvent(tx, "Claim", { sender: underUser1, epoch: new BN("2"), amount: ether("60.3") }); // 24 = 24/24 * (67*0.9)
 
-      await expectRevert(stVol.claim([1], { from: bullUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([1], { from: bullUser2 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([1], { from: bearUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([2], { from: bullUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([2], { from: bullUser2 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([2], { from: bearUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([1], { from: overUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([1], { from: overUser2 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([1], { from: underUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([2], { from: overUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([2], { from: overUser2 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([2], { from: underUser1 }), "Not eligible for claim");
     });
 
     it("Should multi claim rewards", async () => {
@@ -681,13 +681,13 @@ contract(
       await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // 1 USDC
-      await stVol.participateLong(currentEpoch, ether("2"), { from: bullUser2 }); // 2 USDC
-      await stVol.participateShort(currentEpoch, ether("4"), { from: bearUser1 }); // 4 USDC
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }); // 1 USDC
+      await stVol.participateOver(currentEpoch, ether("2"), { from: overUser2 }); // 2 USDC
+      await stVol.participateUnder(currentEpoch, ether("4"), { from: underUser1 }); // 4 USDC
 
-      assert.equal(await stVol.claimable(1, bullUser1), false);
-      assert.equal(await stVol.claimable(1, bullUser2), false);
-      assert.equal(await stVol.claimable(1, bearUser1), false);
+      assert.equal(await stVol.claimable(1, overUser1), false);
+      assert.equal(await stVol.claimable(1, overUser2), false);
+      assert.equal(await stVol.claimable(1, underUser1), false);
 
       // Epoch 2
       await nextEpoch();
@@ -696,9 +696,9 @@ contract(
       await stVol.genesisStartRound(); // For round 1
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("21"), { from: bullUser1 }); // 21 USDC
-      await stVol.participateLong(currentEpoch, ether("22"), { from: bullUser2 }); // 22 USDC
-      await stVol.participateShort(currentEpoch, ether("24"), { from: bearUser1 }); // 24 USDC
+      await stVol.participateOver(currentEpoch, ether("21"), { from: overUser1 }); // 21 USDC
+      await stVol.participateOver(currentEpoch, ether("22"), { from: overUser2 }); // 22 USDC
+      await stVol.participateUnder(currentEpoch, ether("24"), { from: underUser1 }); // 24 USDC
 
       // Epoch 3, Round 1 is Bull (130 > 120)
       await nextEpoch();
@@ -706,12 +706,12 @@ contract(
       await oracle.updateAnswer(price130);
       await stVol.executeRound();
 
-      assert.equal(await stVol.claimable(1, bullUser1), true);
-      assert.equal(await stVol.claimable(1, bullUser2), true);
-      assert.equal(await stVol.claimable(1, bearUser1), false);
-      assert.equal(await stVol.claimable(2, bullUser1), false);
-      assert.equal(await stVol.claimable(2, bullUser2), false);
-      assert.equal(await stVol.claimable(2, bearUser1), false);
+      assert.equal(await stVol.claimable(1, overUser1), true);
+      assert.equal(await stVol.claimable(1, overUser2), true);
+      assert.equal(await stVol.claimable(1, underUser1), false);
+      assert.equal(await stVol.claimable(2, overUser1), false);
+      assert.equal(await stVol.claimable(2, overUser2), false);
+      assert.equal(await stVol.claimable(2, underUser1), false);
 
       // Epoch 4, Round 2 is Bull (140 > 130)
       await nextEpoch();
@@ -719,44 +719,44 @@ contract(
       await oracle.updateAnswer(price140);
       await stVol.executeRound();
 
-      assert.equal(await stVol.claimable(1, bullUser1), true);
-      assert.equal(await stVol.claimable(1, bullUser2), true);
-      assert.equal(await stVol.claimable(1, bearUser1), false);
-      assert.equal(await stVol.claimable(2, bullUser1), true);
-      assert.equal(await stVol.claimable(2, bullUser2), true);
-      assert.equal(await stVol.claimable(2, bearUser1), false);
+      assert.equal(await stVol.claimable(1, overUser1), true);
+      assert.equal(await stVol.claimable(1, overUser2), true);
+      assert.equal(await stVol.claimable(1, underUser1), false);
+      assert.equal(await stVol.claimable(2, overUser1), true);
+      assert.equal(await stVol.claimable(2, overUser2), true);
+      assert.equal(await stVol.claimable(2, underUser1), false);
 
-      await expectRevert(stVol.claim([2, 2], { from: bullUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([1, 1], { from: bullUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([2, 2], { from: overUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([1, 1], { from: overUser1 }), "Not eligible for claim");
 
-      let tx = await stVol.claim([1, 2], { from: bullUser1 }); // Success
+      let tx = await stVol.claim([1, 2], { from: overUser1 }); // Success
       let { gasUsed } = tx.receipt;
 
       // 2.1 = 1/3 * (7*0.9) + // 29.4488372093 = 21 / 43 * (67 * 0.9) = 29.448837209302325581
-      expectEvent(tx, "Claim", { sender: bullUser1, epoch: new BN("1"), amount: ether("2.1") });
+      expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("1"), amount: ether("2.1") });
 
       // Manual event handling for second event with same name from the same contract
-      assert.equal(tx.logs[1].args.sender, bullUser1);
+      assert.equal(tx.logs[1].args.sender, overUser1);
       assert.equal(tx.logs[1].args.epoch, "2");
       assert.equal(tx.logs[1].args.amount.toString(), ether("29.448837209302325581").toString());
 
-      tx = await stVol.claim([1, 2], { from: bullUser2 }); // Success
+      tx = await stVol.claim([1, 2], { from: overUser2 }); // Success
       gasUsed = tx.receipt.gasUsed;
 
       // 4.2 = 2/3 * (7*0.9) + // 30.851162790697674418 = 22 / 43 * (67 * 0.9) = 35.051162790697674418 USDC
-      expectEvent(tx, "Claim", { sender: bullUser2, epoch: new BN("1"), amount: ether("4.2") });
+      expectEvent(tx, "Claim", { sender: overUser2, epoch: new BN("1"), amount: ether("4.2") });
 
       // Manual event handling for second event with same name from the same contract
-      assert.equal(tx.logs[1].args.sender, bullUser2);
+      assert.equal(tx.logs[1].args.sender, overUser2);
       assert.equal(tx.logs[1].args.epoch, "2");
       assert.equal(tx.logs[1].args.amount.toString(), ether("30.851162790697674418").toString());
 
-      await expectRevert(stVol.claim([1, 2], { from: bullUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([2, 1], { from: bullUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([1, 2], { from: bullUser2 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([2, 1], { from: bullUser2 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([1], { from: bearUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([2], { from: bearUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([1, 2], { from: overUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([2, 1], { from: overUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([1, 2], { from: overUser2 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([2, 1], { from: overUser2 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([1], { from: underUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([2], { from: underUser1 }), "Not eligible for claim");
     });
 
     it("Should record house wins", async () => {
@@ -766,9 +766,9 @@ contract(
       await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // 1 USDC
-      await stVol.participateLong(currentEpoch, ether("2"), { from: bullUser2 }); // 2 USDC
-      await stVol.participateShort(currentEpoch, ether("4"), { from: bearUser1 }); // 4 USDC
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }); // 1 USDC
+      await stVol.participateOver(currentEpoch, ether("2"), { from: overUser2 }); // 2 USDC
+      await stVol.participateUnder(currentEpoch, ether("4"), { from: underUser1 }); // 4 USDC
 
       // Epoch 2
       await nextEpoch();
@@ -780,9 +780,9 @@ contract(
       await oracle.updateAnswer(price110);
       await stVol.executeRound();
 
-      await expectRevert(stVol.claim([1], { from: bullUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([1], { from: bullUser2 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([1], { from: bearUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([1], { from: overUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([1], { from: overUser2 }), "Not eligible for claim");
+      await expectRevert(stVol.claim([1], { from: underUser1 }), "Not eligible for claim");
       assert.equal((await stVol.treasuryAmount()).toString(), ether("7").toString()); // 7 = 1+2+4
     });
 
@@ -796,9 +796,9 @@ contract(
       await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // 1 USDC
-      await stVol.participateLong(currentEpoch, ether("2"), { from: bullUser2 }); // 2 USDC
-      await stVol.participateShort(currentEpoch, ether("4"), { from: bearUser1 }); // 4 USDC
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }); // 1 USDC
+      await stVol.participateOver(currentEpoch, ether("2"), { from: overUser2 }); // 2 USDC
+      await stVol.participateUnder(currentEpoch, ether("4"), { from: underUser1 }); // 4 USDC
       predictionCurrentUSDC = predictionCurrentUSDC.add(ether("7"));
 
       assert.equal(await stVol.treasuryAmount(), 0);
@@ -811,9 +811,9 @@ contract(
       await stVol.genesisStartRound(); // For round 1
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("21"), { from: bullUser1 }); // 21 USDC
-      await stVol.participateLong(currentEpoch, ether("22"), { from: bullUser2 }); // 22 USDC
-      await stVol.participateShort(currentEpoch, ether("24"), { from: bearUser1 }); // 24 USDC
+      await stVol.participateOver(currentEpoch, ether("21"), { from: overUser1 }); // 21 USDC
+      await stVol.participateOver(currentEpoch, ether("22"), { from: overUser2 }); // 22 USDC
+      await stVol.participateUnder(currentEpoch, ether("24"), { from: underUser1 }); // 24 USDC
       predictionCurrentUSDC = predictionCurrentUSDC.add(ether("67"));
 
       assert.equal(await stVol.treasuryAmount(), 0);
@@ -826,9 +826,9 @@ contract(
       await stVol.executeRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("31"), { from: bullUser1 }); // 31 USDC
-      await stVol.participateLong(currentEpoch, ether("32"), { from: bullUser2 }); // 32 USDC
-      await stVol.participateShort(currentEpoch, ether("34"), { from: bearUser1 }); // 34 USDC
+      await stVol.participateOver(currentEpoch, ether("31"), { from: overUser1 }); // 31 USDC
+      await stVol.participateOver(currentEpoch, ether("32"), { from: overUser2 }); // 32 USDC
+      await stVol.participateUnder(currentEpoch, ether("34"), { from: underUser1 }); // 34 USDC
       predictionCurrentUSDC = predictionCurrentUSDC.add(ether("97"));
 
       // Admin claim for Round 1
@@ -921,26 +921,26 @@ contract(
     });
 
     it("Should reject admin/owner functions when not admin/owner", async () => {
-      await expectRevert(stVol.claimTreasury({ from: bullUser1 }), "Not admin");
-      await expectRevert(stVol.pause({ from: bullUser1 }), "Not operator/admin");
+      await expectRevert(stVol.claimTreasury({ from: overUser1 }), "Not admin");
+      await expectRevert(stVol.pause({ from: overUser1 }), "Not operator/admin");
       await stVol.pause({ from: admin });
-      await expectRevert(stVol.unpause({ from: bullUser1 }), "Not operator/admin");
-      await expectRevert(stVol.setBufferAndIntervalSeconds("50", "100", { from: bullUser1 }), "Not admin");
-      await expectRevert(stVol.setMinParticipateAmount("0", { from: bullUser1 }), "Not admin");
-      await expectRevert(stVol.setOperator(bearUser1, { from: bullUser1 }), "Not admin");
-      await expectRevert(stVol.setOracle(bearUser1, { from: bullUser1 }), "Not admin");
-      await expectRevert(stVol.setOracleUpdateAllowance("0", { from: bullUser1 }), "Not admin");
-      await expectRevert(stVol.setTreasuryFee("100", { from: bullUser1 }), "Not admin");
-      await expectRevert(stVol.unpause({ from: bullUser1 }), "Not operator/admin");
+      await expectRevert(stVol.unpause({ from: overUser1 }), "Not operator/admin");
+      await expectRevert(stVol.setBufferAndIntervalSeconds("50", "100", { from: overUser1 }), "Not admin");
+      await expectRevert(stVol.setMinParticipateAmount("0", { from: overUser1 }), "Not admin");
+      await expectRevert(stVol.setOperator(underUser1, { from: overUser1 }), "Not admin");
+      await expectRevert(stVol.setOracle(underUser1, { from: overUser1 }), "Not admin");
+      await expectRevert(stVol.setOracleUpdateAllowance("0", { from: overUser1 }), "Not admin");
+      await expectRevert(stVol.setTreasuryFee("100", { from: overUser1 }), "Not admin");
+      await expectRevert(stVol.unpause({ from: overUser1 }), "Not operator/admin");
       await stVol.unpause({ from: admin });
       await expectRevert(stVol.setAdmin(admin, { from: admin }), "Ownable: caller is not the owner");
-      await expectRevert(stVol.setAdmin(bullUser1, { from: bullUser1 }), "Ownable: caller is not the owner");
+      await expectRevert(stVol.setAdmin(overUser1, { from: overUser1 }), "Ownable: caller is not the owner");
     });
 
     it("Should reject admin/owner functions when not paused", async () => {
       await expectRevert(stVol.setBufferAndIntervalSeconds("50", "100", { from: admin }), "Pausable: not paused");
       await expectRevert(stVol.setMinParticipateAmount("0", { from: admin }), "Pausable: not paused");
-      await expectRevert(stVol.setOracle(bearUser1, { from: admin }), "Pausable: not paused");
+      await expectRevert(stVol.setOracle(underUser1, { from: admin }), "Pausable: not paused");
       await expectRevert(stVol.setOracleUpdateAllowance("0", { from: admin }), "Pausable: not paused");
       await expectRevert(stVol.setTreasuryFee("100", { from: admin }), "Pausable: not paused");
       await expectRevert(stVol.unpause({ from: admin }), "Pausable: not paused");
@@ -953,13 +953,13 @@ contract(
       await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }); // 1 USDC
-      await stVol.participateLong(currentEpoch, ether("2"), { from: bullUser2 }); // 2 USDC
-      await stVol.participateShort(currentEpoch, ether("4"), { from: bearUser1 }); // 4 USDC
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }); // 1 USDC
+      await stVol.participateOver(currentEpoch, ether("2"), { from: overUser2 }); // 2 USDC
+      await stVol.participateUnder(currentEpoch, ether("4"), { from: underUser1 }); // 4 USDC
 
-      assert.equal(await stVol.refundable(1, bullUser1), false);
-      assert.equal(await stVol.refundable(1, bullUser2), false);
-      assert.equal(await stVol.refundable(1, bearUser1), false);
+      assert.equal(await stVol.refundable(1, overUser1), false);
+      assert.equal(await stVol.refundable(1, overUser2), false);
+      assert.equal(await stVol.refundable(1, underUser1), false);
       assert.equal(await stVol.treasuryAmount(), 0);
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("7").toString());
 
@@ -968,9 +968,9 @@ contract(
       await stVol.genesisStartRound();
       currentEpoch = await stVol.currentEpoch();
 
-      assert.equal(await stVol.refundable(1, bullUser1), false);
-      assert.equal(await stVol.refundable(1, bullUser2), false);
-      assert.equal(await stVol.refundable(1, bearUser1), false);
+      assert.equal(await stVol.refundable(1, overUser1), false);
+      assert.equal(await stVol.refundable(1, overUser2), false);
+      assert.equal(await stVol.refundable(1, underUser1), false);
 
       // Epoch 3 (missed)
       await nextEpoch();
@@ -978,28 +978,28 @@ contract(
       // Epoch 4
       await nextEpoch();
       await oracle.updateAnswer(INITIAL_PRICE); // To update Oracle roundId
-      await expectRevert(stVol.executeRound(), "Can only lock round within bufferSeconds");
+      await expectRevert(stVol.executeRound(), "Can only start round within bufferSeconds");
 
       // Refund for Round 1
-      assert.equal(await stVol.refundable(1, bullUser1), true);
-      assert.equal(await stVol.refundable(1, bullUser2), true);
-      assert.equal(await stVol.refundable(1, bearUser1), true);
+      assert.equal(await stVol.refundable(1, overUser1), true);
+      assert.equal(await stVol.refundable(1, overUser2), true);
+      assert.equal(await stVol.refundable(1, underUser1), true);
 
-      let tx = await stVol.claim([1], { from: bullUser1 }); // Success
+      let tx = await stVol.claim([1], { from: overUser1 }); // Success
       let { gasUsed } = tx.receipt;
-      expectEvent(tx, "Claim", { sender: bullUser1, epoch: new BN("1"), amount: ether("1") }); // 1, 100% of amount
+      expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("1"), amount: ether("1") }); // 1, 100% of amount
 
-      tx = await stVol.claim([1], { from: bullUser2 }); // Success
+      tx = await stVol.claim([1], { from: overUser2 }); // Success
       gasUsed = tx.receipt.gasUsed;
-      expectEvent(tx, "Claim", { sender: bullUser2, epoch: new BN(1), amount: ether("2") }); // 2, 100% of amount
+      expectEvent(tx, "Claim", { sender: overUser2, epoch: new BN(1), amount: ether("2") }); // 2, 100% of amount
 
-      tx = await stVol.claim([1], { from: bearUser1 }); // Success
+      tx = await stVol.claim([1], { from: underUser1 }); // Success
       gasUsed = tx.receipt.gasUsed;
-      expectEvent(tx, "Claim", { sender: bearUser1, epoch: new BN(1), amount: ether("4") }); // 4, 100% of amount
+      expectEvent(tx, "Claim", { sender: underUser1, epoch: new BN(1), amount: ether("4") }); // 4, 100% of amount
 
-      await expectRevert(stVol.claim([1], { from: bullUser1 }), "Not eligible for refund");
-      await expectRevert(stVol.claim([1], { from: bullUser2 }), "Not eligible for refund");
-      await expectRevert(stVol.claim([1], { from: bearUser1 }), "Not eligible for refund");
+      await expectRevert(stVol.claim([1], { from: overUser1 }), "Not eligible for refund");
+      await expectRevert(stVol.claim([1], { from: overUser2 }), "Not eligible for refund");
+      await expectRevert(stVol.claim([1], { from: underUser1 }), "Not eligible for refund");
 
       // Treasury amount should be empty
       assert.equal(await stVol.treasuryAmount(), 0);
@@ -1008,28 +1008,28 @@ contract(
 
     it("Rejections for participate bulls/bears work as expected", async () => {
       // Epoch 0
-      await expectRevert(stVol.participateLong("0", ether("1"), { from: bullUser1 }), "Round not participable");
-      await expectRevert(stVol.participateShort("0", ether("1"), { from: bullUser1 }), "Round not participable");
-      await expectRevert(stVol.participateLong("1", ether("1"), { from: bullUser1 }), "Participate is too early/late");
-      await expectRevert(stVol.participateShort("1", ether("1"), { from: bullUser1 }), "Participate is too early/late");
+      await expectRevert(stVol.participateOver("0", ether("1"), { from: overUser1 }), "Round not participable");
+      await expectRevert(stVol.participateUnder("0", ether("1"), { from: overUser1 }), "Round not participable");
+      await expectRevert(stVol.participateOver("1", ether("1"), { from: overUser1 }), "Participate is too early/late");
+      await expectRevert(stVol.participateUnder("1", ether("1"), { from: overUser1 }), "Participate is too early/late");
 
       // Epoch 1
       const price110 = 11000000000; // $110
       await oracle.updateAnswer(price110);
       await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
-      await expectRevert(stVol.participateLong("1", ether("101"), { from: bullUser1 }), "transfer amount exceeds balance");
-      await expectRevert(stVol.participateShort("1", ether("101"), { from: bearUser1 }), "transfer amount exceeds balance");
-      await expectRevert(stVol.participateLong("2", ether("1"), { from: bullUser1 }), "Participate is too early/late");
-      await expectRevert(stVol.participateShort("2", ether("1"), { from: bullUser1 }), "Participate is too early/late");
+      await expectRevert(stVol.participateOver("1", ether("101"), { from: overUser1 }), "transfer amount exceeds balance");
+      await expectRevert(stVol.participateUnder("1", ether("101"), { from: underUser1 }), "transfer amount exceeds balance");
+      await expectRevert(stVol.participateOver("2", ether("1"), { from: overUser1 }), "Participate is too early/late");
+      await expectRevert(stVol.participateUnder("2", ether("1"), { from: overUser1 }), "Participate is too early/late");
 
       // Participate must be higher (or equal) than minParticipateAmount
       await expectRevert(
-        stVol.participateShort("1", ether("0.999999"), { from: bullUser1 }),
+        stVol.participateUnder("1", ether("0.999999"), { from: overUser1 }),
         "Participate amount must be greater than minParticipateAmount"
       );
       await expectRevert(
-        stVol.participateLong("1", ether("0.999999"), { from: bullUser1 }),
+        stVol.participateOver("1", ether("0.999999"), { from: overUser1 }),
         "Participate amount must be greater than minParticipateAmount"
       );
     });
@@ -1042,13 +1042,13 @@ contract(
       // Epoch 1
       await stVol.genesisOpenRound();
       await expectRevert(stVol.genesisOpenRound(), "Can only run genesisOpenRound once");
-      await expectRevert(stVol.genesisStartRound(), "Can only lock round after startTimestamp");
+      await expectRevert(stVol.genesisStartRound(), "Can only start round after startTimestamp");
 
       // Advance to next epoch
       await nextEpoch();
       await nextEpoch();
 
-      await expectRevert(stVol.genesisStartRound(), "Can only lock round within bufferSeconds");
+      await expectRevert(stVol.genesisStartRound(), "Can only start round within bufferSeconds");
 
       await expectRevert(
         stVol.executeRound(),
@@ -1074,7 +1074,7 @@ contract(
 
       await nextEpoch();
       await oracle.updateAnswer(INITIAL_PRICE); // To update Oracle roundId
-      await expectRevert(stVol.executeRound(), "Can only lock round within bufferSeconds");
+      await expectRevert(stVol.executeRound(), "Can only start round within bufferSeconds");
     });
 
     it("Should prevent betting when paused", async () => {
@@ -1087,9 +1087,9 @@ contract(
 
       const tx = await stVol.pause({ from: admin });
       expectEvent(tx, "Pause", { epoch: new BN(3) });
-      await expectRevert(stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 }), "Pausable: paused");
-      await expectRevert(stVol.participateShort(currentEpoch, ether("1"), { from: bearUser1 }), "Pausable: paused");
-      await expectRevert(stVol.claim([1], { from: bullUser1 }), "Not eligible for claim"); // Success
+      await expectRevert(stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }), "Pausable: paused");
+      await expectRevert(stVol.participateUnder(currentEpoch, ether("1"), { from: underUser1 }), "Pausable: paused");
+      await expectRevert(stVol.claim([1], { from: overUser1 }), "Not eligible for claim"); // Success
     });
 
     it("Should prevent round operations when paused", async () => {
@@ -1124,49 +1124,49 @@ contract(
       await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 });
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser2 });
-      await stVol.participateShort(currentEpoch, ether("1"), { from: bearUser1 });
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 });
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser2 });
+      await stVol.participateUnder(currentEpoch, ether("1"), { from: underUser1 });
 
       await nextEpoch();
       await oracle.updateAnswer(INITIAL_PRICE);
       await stVol.genesisStartRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 });
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser2 });
-      await stVol.participateShort(currentEpoch, ether("1"), { from: bearUser1 });
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 });
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser2 });
+      await stVol.participateUnder(currentEpoch, ether("1"), { from: underUser1 });
 
       await nextEpoch();
       await oracle.updateAnswer(INITIAL_PRICE);
       await stVol.executeRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 });
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser2 });
-      await stVol.participateShort(currentEpoch, ether("1"), { from: bearUser1 });
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 });
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser2 });
+      await stVol.participateUnder(currentEpoch, ether("1"), { from: underUser1 });
 
       await nextEpoch();
       await oracle.updateAnswer(INITIAL_PRICE);
       await stVol.executeRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 });
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser2 });
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 });
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser2 });
 
       await nextEpoch();
       await oracle.updateAnswer(INITIAL_PRICE);
       await stVol.executeRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 });
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 });
 
       // Get by page size of 2
       const pageSize = 2;
 
-      assertBNArray((await stVol.getUserRounds(bullUser1, 0, 5))[0], [1, 2, 3, 4, 5]);
+      assertBNArray((await stVol.getUserRounds(overUser1, 0, 5))[0], [1, 2, 3, 4, 5]);
 
-      let result = await stVol.getUserRounds(bullUser1, 0, pageSize);
+      let result = await stVol.getUserRounds(overUser1, 0, pageSize);
       let epochData = result[0];
       let positionData = result[1];
       let cursor = result[2];
@@ -1176,61 +1176,61 @@ contract(
       assert.includeOrderedMembers(positionData[1], ["0", "1000000000000000000", false]);
       assert.equal(cursor, 2);
 
-      result = await stVol.getUserRounds(bullUser1, cursor, pageSize);
+      result = await stVol.getUserRounds(overUser1, cursor, pageSize);
       (epochData = result[0]), (positionData = result[1]), (cursor = result[2]);
       assertBNArray(epochData, [3, 4]);
       assert.includeOrderedMembers(positionData[0], ["0", "1000000000000000000", false]);
       assert.includeOrderedMembers(positionData[1], ["0", "1000000000000000000", false]);
       assert.equal(cursor, 4);
 
-      result = await stVol.getUserRounds(bullUser1, cursor, pageSize);
+      result = await stVol.getUserRounds(overUser1, cursor, pageSize);
       (epochData = result[0]), (positionData = result[1]), (cursor = result[2]);
       assertBNArray(epochData, [5]);
       assert.includeOrderedMembers(positionData[0], ["0", "1000000000000000000", false]);
       assert.equal(cursor, 5);
 
-      result = await stVol.getUserRounds(bullUser1, cursor, pageSize);
+      result = await stVol.getUserRounds(overUser1, cursor, pageSize);
       (epochData = result[0]), (positionData = result[1]), (cursor = result[2]);
       assertBNArray(epochData, []);
       assert.isEmpty(positionData);
       assert.equal(cursor, 5);
 
-      assertBNArray((await stVol.getUserRounds(bullUser2, 0, 4))[0], [1, 2, 3, 4]);
-      result = await stVol.getUserRounds(bullUser2, 0, pageSize);
+      assertBNArray((await stVol.getUserRounds(overUser2, 0, 4))[0], [1, 2, 3, 4]);
+      result = await stVol.getUserRounds(overUser2, 0, pageSize);
       (epochData = result[0]), (positionData = result[1]), (cursor = result[2]);
       assertBNArray(epochData, [1, 2]);
       assert.includeOrderedMembers(positionData[0], ["0", "1000000000000000000", false]);
       assert.includeOrderedMembers(positionData[1], ["0", "1000000000000000000", false]);
       assert.equal(cursor, 2);
 
-      result = await stVol.getUserRounds(bullUser2, cursor, pageSize);
+      result = await stVol.getUserRounds(overUser2, cursor, pageSize);
       (epochData = result[0]), (positionData = result[1]), (cursor = result[2]);
       assertBNArray(epochData, [3, 4]);
       assert.includeOrderedMembers(positionData[0], ["0", "1000000000000000000", false]);
       assert.includeOrderedMembers(positionData[1], ["0", "1000000000000000000", false]);
       assert.equal(cursor, 4);
 
-      result = await stVol.getUserRounds(bullUser2, cursor, pageSize);
+      result = await stVol.getUserRounds(overUser2, cursor, pageSize);
       (epochData = result[0]), (positionData = result[1]), (cursor = result[2]);
       assertBNArray(epochData, []);
       assert.isEmpty(positionData);
       assert.equal(cursor, 4);
 
-      assertBNArray((await stVol.getUserRounds(bearUser1, 0, 3))[0], [1, 2, 3]);
-      result = await stVol.getUserRounds(bearUser1, 0, pageSize);
+      assertBNArray((await stVol.getUserRounds(underUser1, 0, 3))[0], [1, 2, 3]);
+      result = await stVol.getUserRounds(underUser1, 0, pageSize);
       (epochData = result[0]), (positionData = result[1]), (cursor = result[2]);
       assertBNArray(epochData, [1, 2]);
       assert.includeOrderedMembers(positionData[0], ["1", "1000000000000000000", false]);
       assert.includeOrderedMembers(positionData[1], ["1", "1000000000000000000", false]);
       assert.equal(cursor, 2);
 
-      result = await stVol.getUserRounds(bearUser1, cursor, pageSize);
+      result = await stVol.getUserRounds(underUser1, cursor, pageSize);
       (epochData = result[0]), (positionData = result[1]), (cursor = result[2]);
       assertBNArray(epochData, [3]);
       assert.includeOrderedMembers(positionData[0], ["1", "1000000000000000000", false]);
       assert.equal(cursor, 3);
 
-      result = await stVol.getUserRounds(bearUser1, cursor, pageSize);
+      result = await stVol.getUserRounds(underUser1, cursor, pageSize);
       (epochData = result[0]), (positionData = result[1]), (cursor = result[2]);
       assertBNArray(epochData, []);
       assert.isEmpty(positionData);
@@ -1240,9 +1240,9 @@ contract(
       await stVol.genesisOpenRound();
       currentEpoch = await stVol.currentEpoch();
 
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser1 });
-      await stVol.participateLong(currentEpoch, ether("1"), { from: bullUser2 });
-      await stVol.participateShort(currentEpoch, ether("1"), { from: bearUser1 });
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 });
+      await stVol.participateOver(currentEpoch, ether("1"), { from: overUser2 });
+      await stVol.participateUnder(currentEpoch, ether("1"), { from: underUser1 });
       assert.equal(await mockUsdc.balanceOf(stVol.address), ether("3").toString());
       await expectRevert(
         stVol.recoverToken(mockUsdc.address, ether("1"), { from: owner }),
@@ -1250,9 +1250,9 @@ contract(
       );
 
       const randomToken = await MockERC20.new("Random Token", "RT", _totalInitSupply);
-      await randomToken.mintTokens(ether("100"), { from: bullUser1 });
-      assert.equal(await randomToken.balanceOf(bullUser1), ether("100").toString());
-      await randomToken.transfer(stVol.address, ether("66"), { from: bullUser1 });
+      await randomToken.mintTokens(ether("100"), { from: overUser1 });
+      assert.equal(await randomToken.balanceOf(overUser1), ether("100").toString());
+      await randomToken.transfer(stVol.address, ether("66"), { from: overUser1 });
       assert.equal(await randomToken.balanceOf(stVol.address), ether("66").toString());
       const tx = await stVol.recoverToken(randomToken.address, ether("66"), { from: owner });
       expectEvent(tx, "TokenRecovery", { token: randomToken.address, amount: ether("66") });
