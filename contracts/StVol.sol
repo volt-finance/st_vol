@@ -600,10 +600,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         int256 price
     ) internal {
         require(rounds[epoch].openTimestamp != 0, "Can only lock round after round has started");
-        require(block.timestamp >= rounds[epoch].startTimestamp, "Can only lock round after startTimestamp");
+        require(block.timestamp >= rounds[epoch].startTimestamp, "Can only start round after startTimestamp");
         require(
             block.timestamp <= rounds[epoch].startTimestamp + bufferSeconds,
-            "Can only lock round within bufferSeconds"
+            "Can only start round within bufferSeconds"
         );
         Round storage round = rounds[epoch];
         round.closeTimestamp = block.timestamp + intervalSeconds;
@@ -620,10 +620,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      */
     function _safeOpenRound(uint256 epoch) internal {
         require(genesisOpenOnce, "Can only run after genesisOpenRound is triggered");
-        require(rounds[epoch - 2].closeTimestamp != 0, "Can only start round after round n-2 has ended");
+        require(rounds[epoch - 2].closeTimestamp != 0, "Can only open round after round n-2 has ended");
         require(
             block.timestamp >= rounds[epoch - 2].closeTimestamp,
-            "Can only start new round after round n-2 closeTimestamp"
+            "Can only open new round after round n-2 closeTimestamp"
         );
         _openRound(epoch);
     }
