@@ -5,7 +5,7 @@ const main = async () => {
   const networkName = network.name;
 
   // Check if the network is supported.
-  if (networkName === "testnet" || networkName === "mainnet") {
+  if (networkName === "goerli" || networkName === "mainnet") {
     console.log(`Deploying to ${networkName} network...`);
 
     // Compile contracts.

@@ -59,8 +59,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 startOracleId;
         uint256 closeOracleId;
         uint256 totalAmount;
-        uint256 bullAmount;
-        uint256 bearAmount;
+        uint256 overAmount;
+        uint256 underAmount;
         uint256 rewardBaseCalAmount;
         uint256 rewardAmount;
         bool oracleCalled;
@@ -178,7 +178,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 amount = _amount;
         Round storage round = rounds[epoch];
         round.totalAmount = round.totalAmount + amount;
-        round.bearAmount = round.bearAmount + amount;
+        round.underAmount = round.underAmount + amount;
 
         // Update user data
         ParticipateInfo storage participateInfo = ledger[epoch][msg.sender];
@@ -204,7 +204,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 amount = _amount;
         Round storage round = rounds[epoch];
         round.totalAmount = round.totalAmount + amount;
-        round.bullAmount = round.bullAmount + amount;
+        round.overAmount = round.overAmount + amount;
 
         // Update user data
         ParticipateInfo storage participateInfo = ledger[epoch][msg.sender];
@@ -538,13 +538,13 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
         // Over wins
         if (round.closePrice > round.startPrice) {
-            rewardBaseCalAmount = round.bullAmount;
+            rewardBaseCalAmount = round.overAmount;
             treasuryAmt = (round.totalAmount * treasuryFee) / 10000;
             rewardAmount = round.totalAmount - treasuryAmt;
         }
         // Under wins
         else if (round.closePrice < round.startPrice) {
-            rewardBaseCalAmount = round.bearAmount;
+            rewardBaseCalAmount = round.underAmount;
             treasuryAmt = (round.totalAmount * treasuryFee) / 10000;
             rewardAmount = round.totalAmount - treasuryAmt;
         }

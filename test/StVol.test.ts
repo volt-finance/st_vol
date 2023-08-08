@@ -281,8 +281,8 @@ contract(
 
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("3.7").toString()); // 3.7 USDC
       assert.equal((await stVol.rounds(1)).totalAmount, ether("3.7").toString()); // 3.7 USDC
-      assert.equal((await stVol.rounds(1)).bullAmount, ether("2.3").toString()); // 2.3 USDC
-      assert.equal((await stVol.rounds(1)).bearAmount, ether("1.4").toString()); // 1.4 USDC
+      assert.equal((await stVol.rounds(1)).overAmount, ether("2.3").toString()); // 2.3 USDC
+      assert.equal((await stVol.rounds(1)).underAmount, ether("1.4").toString()); // 1.4 USDC
       assert.equal((await stVol.ledger(1, overUser1)).position, Position.Over);
       assert.equal((await stVol.ledger(1, overUser1)).amount, ether("1.1").toString());
       assert.equal((await stVol.ledger(1, overUser2)).position, Position.Over);
@@ -305,8 +305,8 @@ contract(
 
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("10.4").toString()); // 10.4 USDC (3.7+6.7)
       assert.equal((await stVol.rounds(2)).totalAmount, ether("6.7").toString()); // 6.7 USDC
-      assert.equal((await stVol.rounds(2)).bullAmount, ether("4.3").toString()); // 4.3 USDC
-      assert.equal((await stVol.rounds(2)).bearAmount, ether("2.4").toString()); // 2.4 USDC
+      assert.equal((await stVol.rounds(2)).overAmount, ether("4.3").toString()); // 4.3 USDC
+      assert.equal((await stVol.rounds(2)).underAmount, ether("2.4").toString()); // 2.4 USDC
       assert.equal((await stVol.ledger(2, overUser1)).position, Position.Over);
       assert.equal((await stVol.ledger(2, overUser1)).amount, ether("2.1").toString());
       assert.equal((await stVol.ledger(2, overUser2)).position, Position.Over);
@@ -330,8 +330,8 @@ contract(
 
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("20.1").toString()); // 20.1 USDC (3.7+6.7+9.7)
       assert.equal((await stVol.rounds(3)).totalAmount, ether("9.7").toString()); // 9.7 USDC
-      assert.equal((await stVol.rounds(3)).bullAmount, ether("6.3").toString()); // 6.3 USDC
-      assert.equal((await stVol.rounds(3)).bearAmount, ether("3.4").toString()); // 3.4 USDC
+      assert.equal((await stVol.rounds(3)).overAmount, ether("6.3").toString()); // 6.3 USDC
+      assert.equal((await stVol.rounds(3)).underAmount, ether("3.4").toString()); // 3.4 USDC
       assert.equal((await stVol.ledger(3, overUser1)).position, Position.Over);
       assert.equal((await stVol.ledger(3, overUser1)).amount, ether("3.1").toString());
       assert.equal((await stVol.ledger(3, overUser2)).position, Position.Over);
@@ -355,8 +355,8 @@ contract(
 
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("32.8").toString()); // 32.8 USDC (3.7+6.7+9.7+12.7)
       assert.equal((await stVol.rounds(4)).totalAmount, ether("12.7").toString()); // 12.7 USDC
-      assert.equal((await stVol.rounds(4)).bullAmount, ether("8.3").toString()); // 8.3 USDC
-      assert.equal((await stVol.rounds(4)).bearAmount, ether("4.4").toString()); // 4.4 USDC
+      assert.equal((await stVol.rounds(4)).overAmount, ether("8.3").toString()); // 8.3 USDC
+      assert.equal((await stVol.rounds(4)).underAmount, ether("4.4").toString()); // 4.4 USDC
       assert.equal((await stVol.ledger(4, overUser1)).position, Position.Over);
       assert.equal((await stVol.ledger(4, overUser1)).amount, ether("4.1").toString());
       assert.equal((await stVol.ledger(4, overUser2)).position, Position.Over);

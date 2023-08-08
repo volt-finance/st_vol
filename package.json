@@ -12,7 +12,7 @@
     "test": "npx hardhat test",
     "test:coverage": "npx hardhat coverage",
     "test:size-contracts": "npx hardhat size-contracts",
-    "verify:goerli": "hardhat verify --constructor-args arguments.js 0xFF814c561E08BCC172f7a8578864609Fb49c6eA5 --network goerli"
+    "verify:goerli": "npx hardhat verify --constructor-args arguments.js 0x24a9A7723712bde1C0CF489A4297E4F61dBC0911 --network goerli"
   },
   "devDependencies": {
     "@chainlink/contracts": "^0.2.0",
