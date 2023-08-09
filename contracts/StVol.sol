@@ -30,7 +30,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     uint256 public intervalSeconds; // interval in seconds between two participate rounds
 
     uint256 public minParticipateAmount; // minimum participate amount (denominated in wei)
-    uint256 public treasuryFee; // treasury rate (e.g. 200 = 2%, 150 = 1.50%)
+    uint256 public commissionfee; // commission rate (e.g. 200 = 2%, 150 = 1.50%)
     uint256 public treasuryAmount; // treasury amount that was not claimed
 
     uint256 public currentEpoch; // current epoch for round
@@ -40,7 +40,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
     uint256 public constant MAX_TREASURY_FEE = 1000; // 10%
 
-    mapping(uint256 => mapping(address => ParticipateInfo)) public ledger;
+    mapping(uint256 => mapping(Position => mapping(address => ParticipateInfo))) public ledger;
     mapping(uint256 => Round) public rounds;
     mapping(address => uint256[]) public userRounds;
 
@@ -81,7 +81,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     event NewAdminAddress(address admin);
     event NewBufferAndIntervalSeconds(uint256 bufferSeconds, uint256 intervalSeconds);
     event NewMinParticipateAmount(uint256 indexed epoch, uint256 minParticipateAmount);
-    event NewTreasuryFee(uint256 indexed epoch, uint256 treasuryFee);
+    event NewCommissionfee(uint256 indexed epoch, uint256 commissionfee);
     event NewOperatorAddress(address operator);
     event NewOracle(address oracle);
     event NewOracleUpdateAllowance(uint256 oracleUpdateAllowance);
@@ -137,7 +137,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @param _bufferSeconds: buffer of time for resolution of price
      * @param _minParticipateAmount: minimum participate amounts (in wei)
      * @param _oracleUpdateAllowance: oracle update allowance
-     * @param _treasuryFee: treasury fee (1000 = 10%)
+     * @param _commissionfee: treasury fee (1000 = 10%)
      */
     constructor(
         IERC20 _token,
@@ -148,9 +148,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 _bufferSeconds,
         uint256 _minParticipateAmount,
         uint256 _oracleUpdateAllowance,
-        uint256 _treasuryFee
+        uint256 _commissionfee
     ) {
-        require(_treasuryFee <= MAX_TREASURY_FEE, "Treasury fee too high");
+        require(_commissionfee <= MAX_TREASURY_FEE, "Treasury fee too high");
 
         token = _token;
         oracle = AggregatorV3Interface(_oracleAddress);
@@ -160,7 +160,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         bufferSeconds = _bufferSeconds;
         minParticipateAmount = _minParticipateAmount;
         oracleUpdateAllowance = _oracleUpdateAllowance;
-        treasuryFee = _treasuryFee;
+        commissionfee = _commissionfee;
     }
 
     /**
@@ -171,7 +171,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         require(epoch == currentEpoch, "Participate is too early/late");
         require(_participable(epoch), "Round not participable");
         require(_amount >= minParticipateAmount, "Participate amount must be greater than minParticipateAmount");
-        require(ledger[epoch][msg.sender].amount == 0, "Can only participate once per round");
 
         token.safeTransferFrom(msg.sender, address(this), _amount);
         // Update round data
@@ -181,9 +180,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         round.underAmount = round.underAmount + amount;
 
         // Update user data
-        ParticipateInfo storage participateInfo = ledger[epoch][msg.sender];
+        ParticipateInfo storage participateInfo = ledger[epoch][Position.Under][msg.sender];
         participateInfo.position = Position.Under;
-        participateInfo.amount = amount;
+        participateInfo.amount = participateInfo.amount + amount;
         userRounds[msg.sender].push(epoch);
 
         emit ParticipateUnder(msg.sender, epoch, amount);
@@ -197,7 +196,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         require(epoch == currentEpoch, "Participate is too early/late");
         require(_participable(epoch), "Round not participable");
         require(_amount >= minParticipateAmount, "Participate amount must be greater than minParticipateAmount");
-        require(ledger[epoch][msg.sender].amount == 0, "Can only participate once per round");
 
         token.safeTransferFrom(msg.sender, address(this), _amount);
         // Update round data
@@ -207,9 +205,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         round.overAmount = round.overAmount + amount;
 
         // Update user data
-        ParticipateInfo storage participateInfo = ledger[epoch][msg.sender];
+        ParticipateInfo storage participateInfo = ledger[epoch][Position.Over][msg.sender];
         participateInfo.position = Position.Over;
-        participateInfo.amount = amount;
+        participateInfo.amount = participateInfo.amount + amount;
         userRounds[msg.sender].push(epoch);
 
         emit ParticipateOver(msg.sender, epoch, amount);
@@ -219,7 +217,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @notice Claim reward for an array of epochs
      * @param epochs: array of epochs
      */
-    function claim(uint256[] calldata epochs) external nonReentrant notContract {
+    function claim(uint256[] calldata epochs, Position position) external nonReentrant notContract {
         uint256 reward; // Initializes reward
 
         for (uint256 i = 0; i < epochs.length; i++) {
@@ -230,17 +228,15 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
             // Round valid, claim rewards
             if (rounds[epochs[i]].oracleCalled) {
-                require(claimable(epochs[i], msg.sender), "Not eligible for claim");
+                require(claimable(epochs[i], position, msg.sender), "Not eligible for claim");
                 Round memory round = rounds[epochs[i]];
-                addedReward = (ledger[epochs[i]][msg.sender].amount * round.rewardAmount) / round.rewardBaseCalAmount;
+                addedReward += (ledger[epochs[i]][position][msg.sender].amount * round.rewardAmount) / round.rewardBaseCalAmount;
+            } else {
+                // Round invalid, refund Participate amount
+                require(refundable(epochs[i], position, msg.sender), "Not eligible for refund");
+                addedReward += ledger[epochs[i]][position][msg.sender].amount;
             }
-            // Round invalid, refund Participate amount
-            else {
-                require(refundable(epochs[i], msg.sender), "Not eligible for refund");
-                addedReward = ledger[epochs[i]][msg.sender].amount;
-            }
-
-            ledger[epochs[i]][msg.sender].claimed = true;
+            ledger[epochs[i]][position][msg.sender].claimed = true;
             reward += addedReward;
 
             emit Claim(msg.sender, epochs[i], addedReward);
@@ -416,11 +412,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @notice Set treasury fee
      * @dev Callable by admin
      */
-    function setTreasuryFee(uint256 _treasuryFee) external whenPaused onlyAdmin {
-        require(_treasuryFee <= MAX_TREASURY_FEE, "Treasury fee too high");
-        treasuryFee = _treasuryFee;
+    function setCommissionfee(uint256 _commissionfee) external whenPaused onlyAdmin {
+        require(_commissionfee <= MAX_TREASURY_FEE, "Treasury fee too high");
+        commissionfee = _commissionfee;
 
-        emit NewTreasuryFee(currentEpoch, treasuryFee);
+        emit NewCommissionfee(currentEpoch, commissionfee);
     }
 
     /**
@@ -463,6 +459,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         returns (
             uint256[] memory,
             ParticipateInfo[] memory,
+            ParticipateInfo[] memory,
             uint256
         )
     {
@@ -473,14 +470,23 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         }
 
         uint256[] memory values = new uint256[](length);
-        ParticipateInfo[] memory participateInfo = new ParticipateInfo[](length);
+        ParticipateInfo[] memory overParticipateInfo = new ParticipateInfo[](length);
+        ParticipateInfo[] memory underParticipateInfo = new ParticipateInfo[](length);
 
         for (uint256 i = 0; i < length; i++) {
             values[i] = userRounds[user][cursor + i];
-            participateInfo[i] = ledger[values[i]][user];
+            for (uint8 j = 0; j < 2; j++) {
+                Position p = (j == 0) ? Position.Over : Position.Under;
+                if (p == Position.Over) {
+                    overParticipateInfo[i] = ledger[values[i]][p][user];
+                } else {
+                    underParticipateInfo[i] = ledger[values[i]][p][user];
+                }
+
+            }
         }
 
-        return (values, participateInfo, cursor + length);
+        return (values, overParticipateInfo, underParticipateInfo, cursor + length);
     }
 
     /**
@@ -494,10 +500,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     /**
      * @notice Get the claimable stats of specific epoch and user account
      * @param epoch: epoch
+     * @param position: Position
      * @param user: user address
      */
-    function claimable(uint256 epoch, address user) public view returns (bool) {
-        ParticipateInfo memory participateInfo = ledger[epoch][user];
+    function claimable(uint256 epoch, Position position, address user) public view returns (bool) {
+        ParticipateInfo memory participateInfo = ledger[epoch][position][user];
         Round memory round = rounds[epoch];
         if (round.startPrice == round.closePrice) {
             return false;
@@ -515,8 +522,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @param epoch: epoch
      * @param user: user address
      */
-    function refundable(uint256 epoch, address user) public view returns (bool) {
-        ParticipateInfo memory participateInfo = ledger[epoch][user];
+    function refundable(uint256 epoch, Position position, address user) public view returns (bool) {
+        ParticipateInfo memory participateInfo = ledger[epoch][position][user];
         Round memory round = rounds[epoch];
         return
             !round.oracleCalled &&
@@ -539,13 +546,13 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         // Over wins
         if (round.closePrice > round.startPrice) {
             rewardBaseCalAmount = round.overAmount;
-            treasuryAmt = (round.totalAmount * treasuryFee) / 10000;
+            treasuryAmt = (round.totalAmount * commissionfee) / 10000;
             rewardAmount = round.totalAmount - treasuryAmt;
         }
         // Under wins
         else if (round.closePrice < round.startPrice) {
             rewardBaseCalAmount = round.underAmount;
-            treasuryAmt = (round.totalAmount * treasuryFee) / 10000;
+            treasuryAmt = (round.totalAmount * commissionfee) / 10000;
             rewardAmount = round.totalAmount - treasuryAmt;
         }
         // House wins
