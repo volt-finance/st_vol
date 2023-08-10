@@ -796,15 +796,23 @@ contract(
       await oracle.updateAnswer(price110);
       await stVol.genesisStartRound(); // For round 1
 
-      // Epoch 3, Round 1 is Same (110 == 110), House wins
+      // Epoch 3, Round 1 is Same (110 == 110), House wins (refund participant amount to users)
       await nextEpoch();
       await oracle.updateAnswer(price110);
       await stVol.executeRound();
 
+      let tx = await stVol.claim([1], Position.Over, { from: overUser1 }); // Success
+      expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("1"), amount: ether("1") });
+      tx = await stVol.claim([1], Position.Over, { from: overUser2 }); // Success
+      expectEvent(tx, "Claim", { sender: overUser2, epoch: new BN("1"), amount: ether("2") });
+      tx = await stVol.claim([1], Position.Under, { from: underUser1 }); // Success
+      expectEvent(tx, "Claim", { sender: underUser1, epoch: new BN("1"), amount: ether("4") });
+
+      assert.equal((await stVol.treasuryAmount()).toString(), ether("0").toString()); // 0
+
       await expectRevert(stVol.claim([1], Position.Over, { from: overUser1 }), "Not eligible for claim");
       await expectRevert(stVol.claim([1], Position.Over, { from: overUser2 }), "Not eligible for claim");
       await expectRevert(stVol.claim([1], Position.Under, { from: underUser1 }), "Not eligible for claim");
-      assert.equal((await stVol.treasuryAmount()).toString(), ether("7").toString()); // 7 = 1+2+4
     });
 
     it("Should claim treasury rewards", async () => {

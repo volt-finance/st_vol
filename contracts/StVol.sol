@@ -659,17 +659,18 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     ) public view returns (bool) {
         ParticipateInfo memory participateInfo = ledger[epoch][position][user];
         Round memory round = rounds[epoch];
-        if (round.startPrice == round.closePrice) {
-            return false;
-        }
+
         return
             round.oracleCalled &&
             participateInfo.amount != 0 &&
             !participateInfo.claimed &&
-            ((round.closePrice > round.startPrice &&
-                participateInfo.position == Position.Over) ||
-                (round.closePrice < round.startPrice &&
-                    participateInfo.position == Position.Under));
+            (
+                (round.closePrice > round.startPrice && participateInfo.position == Position.Over) 
+                ||
+                (round.closePrice < round.startPrice && participateInfo.position == Position.Under)
+                ||
+                (round.closePrice == round.startPrice && (participateInfo.position == Position.Over || participateInfo.position == Position.Under))
+            );
     }
 
     /**
@@ -718,11 +719,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             treasuryAmt = (round.overAmount * commissionfee) / BASE;
             rewardAmount = round.totalAmount - treasuryAmt;
         }
-        // House wins
+        // House wins refund participant amount to users
         else {
-            rewardBaseCalAmount = 0;
-            rewardAmount = 0;
-            treasuryAmt = round.totalAmount;
+            rewardBaseCalAmount = round.totalAmount;
+            rewardAmount = round.totalAmount;
+            treasuryAmt = 0;
         }
         round.rewardBaseCalAmount = rewardBaseCalAmount;
         round.rewardAmount = rewardAmount;
