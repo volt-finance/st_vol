@@ -31,7 +31,7 @@ const main = async () => {
     console.log("Operator: %s", config.Address.Operator[networkName]);
     console.log("Block.Interval: %s", config.Block.Interval[networkName]);
     console.log("Block.Buffer: %s", config.Block.Buffer[networkName]);
-    console.log("BetAmount: %s", parseEther(config.BetAmount[networkName].toString()).toString());
+    console.log("BetAmount: %s", parseEther(config.MinParticipateAmount[networkName].toString()).toString());
     console.log("OracleUpdateAllowance: %s", config.OracleUpdateAllowance[networkName]);
     console.log("Treasury: %s", config.Treasury[networkName]);
     console.log("===========================================");
@@ -45,7 +45,7 @@ const main = async () => {
       config.Address.Operator[networkName],
       config.Block.Interval[networkName],
       config.Block.Buffer[networkName],
-      parseEther(config.BetAmount[networkName].toString()).toString(),
+      parseEther(config.MinParticipateAmount[networkName].toString()).toString(),
       config.OracleUpdateAllowance[networkName],
       config.Treasury[networkName]
     );
@@ -63,7 +63,7 @@ const main = async () => {
         config.Address.Operator[networkName],
         config.Block.Interval[networkName],
         config.Block.Buffer[networkName],
-        parseEther(config.BetAmount[networkName].toString()).toString(),
+        parseEther(config.MinParticipateAmount[networkName].toString()).toString(),
         config.OracleUpdateAllowance[networkName],
         config.Treasury[networkName]
       ]

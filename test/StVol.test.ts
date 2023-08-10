@@ -532,7 +532,7 @@ contract(
         ether("3.7").add(ether("6.7")).toString()
       );
 
-      // Epoch 3, Round 1 is Bull (130 > 120)
+      // Epoch 3, Round 1 is Over (130 > 120)
       await nextEpoch();
       const price130 = 13000000000; // $130
       await oracle.updateAnswer(price130);
@@ -543,17 +543,17 @@ contract(
       await stVol.participateOver(currentEpoch, ether("3.2"), { from: overUser2 }); // 3.2 USDC
       await stVol.participateUnder(currentEpoch, ether("3.4"), { from: underUser1 }); // 3.4 USDC
 
-      assert.equal((await stVol.rounds(1)).rewardBaseCalAmount, ether("2.3").toString()); // 2.3 USDC, Bull total
-      assert.equal((await stVol.rounds(1)).rewardAmount, ether("3.7") * INITIAL_REWARD_RATE); // 3.33 USDC, Total * rewardRate
+      assert.equal((await stVol.rounds(1)).rewardBaseCalAmount, ether("2.3").toString()); // 2.3 USDC, Over total
+      assert.equal((await stVol.rounds(1)).rewardAmount, ether("3.7") - (ether("1.4") * INITIAL_TREASURY_RATE)); // 3.56 USDC, Total - (Under total(losing side) * treasuryRate)
       assert.equal((await stVol.rounds(2)).rewardBaseCalAmount, 0);
       assert.equal((await stVol.rounds(2)).rewardAmount, 0);
-      assert.equal(await stVol.treasuryAmount(), ether("3.7") * INITIAL_TREASURY_RATE); // 3.7 USDC, Total * treasuryRate
+      assert.equal(await stVol.treasuryAmount(), ether("1.4") * INITIAL_TREASURY_RATE); // 0.14 USDC, Under total(losing side) * treasuryRate
       assert.equal(
         (await mockUsdc.balanceOf(stVol.address)).toString(),
         ether("3.7").add(ether("6.7")).add(ether("9.7")).toString()
       );
 
-      // Epoch 4, Round 2 is Bear (100 < 130)
+      // Epoch 4, Round 2 is Under (100 < 130)
       await nextEpoch();
       const price100 = 10000000000; // $100
       await oracle.updateAnswer(price100);
@@ -564,11 +564,11 @@ contract(
       await stVol.participateOver(currentEpoch, ether("4.2"), { from: overUser2 }); // 4.2 USDC
       await stVol.participateUnder(currentEpoch, ether("4.4"), { from: underUser1 }); // 4.4 USDC
 
-      assert.equal((await stVol.rounds(1)).rewardBaseCalAmount, ether("2.3").toString()); // 2.3 USDC, Bull total
-      assert.equal((await stVol.rounds(1)).rewardAmount, ether("3.7") * INITIAL_REWARD_RATE); // 3.33 USDC, Total * rewardRate
-      assert.equal((await stVol.rounds(2)).rewardBaseCalAmount, ether("2.4").toString()); // 2.4 USDC, Bear total
-      assert.equal((await stVol.rounds(2)).rewardAmount, ether("6.7") * INITIAL_REWARD_RATE); // 6.7 USDC, Total * rewardRate
-      assert.equal(await stVol.treasuryAmount(), ether("3.7").add(ether("6.7")) * INITIAL_TREASURY_RATE); // 10.4, Accumulative treasury
+      assert.equal((await stVol.rounds(1)).rewardBaseCalAmount, ether("2.3").toString()); // 2.3 USDC, Over total
+      assert.equal((await stVol.rounds(1)).rewardAmount, ether("3.7") - (ether("1.4") * INITIAL_TREASURY_RATE)); // 3.56 USDC, Total - (Under total(losing side) * treasuryRate)
+      assert.equal((await stVol.rounds(2)).rewardBaseCalAmount, ether("2.4").toString()); // 2.4 USDC, Under total
+      assert.equal((await stVol.rounds(2)).rewardAmount, ether("6.7") - (ether("4.3") * INITIAL_TREASURY_RATE)); // 6.27 USDC, Total - (Over total(losing side) * treasuryRate)
+      assert.equal(await stVol.treasuryAmount(), ether("1.4").add(ether("4.3")) * INITIAL_TREASURY_RATE); // 0.57, Accumulative treasury
       assert.equal(
         (await mockUsdc.balanceOf(stVol.address)).toString(),
         ether("3.7").add(ether("6.7")).add(ether("9.7")).add(ether("12.7")).toString()
@@ -647,24 +647,23 @@ contract(
       assert.equal(await stVol.claimable(2, Position.Over, overUser2), false);
       assert.equal(await stVol.claimable(2, Position.Under, underUser1), false);
 
-      // Claim for Round 1: Total rewards = 3.7, Bull = 2.3, Bear = 1.4
-
+      // Claim for Round 1: Total rewards = 6.6, Over = 3, Under = 4
       let tx = await stVol.claim([1], Position.Over, { from: overUser1 }); // Success
       let { gasUsed } = tx.receipt;
 
-      expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("1"), amount: ether("2.1") }); // 2.1 = 1/3 * (7*0.9)
+      expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("1"), amount: ether("2.2") }); // 2.2 = (1 * 6.6) / 3
 
       tx = await stVol.claim([1], Position.Over, { from: overUser2 }); // Success
       gasUsed = tx.receipt.gasUsed;
 
-      expectEvent(tx, "Claim", { sender: overUser2, epoch: new BN("1"), amount: ether("4.2") }); // 4.2 = 2/3 * (7*0.9)
+      expectEvent(tx, "Claim", { sender: overUser2, epoch: new BN("1"), amount: ether("4.4") }); // 4.4 = (2 * 6.6) / 3
 
       await expectRevert(stVol.claim([1], Position.Under, { from: underUser1 }), "Not eligible for claim");
       await expectRevert(stVol.claim([2], Position.Over, { from: overUser1 }), "Round has not ended");
       await expectRevert(stVol.claim([2], Position.Over, { from: overUser2 }), "Round has not ended");
       await expectRevert(stVol.claim([2], Position.Under, { from: underUser1 }), "Round has not ended");
 
-      // Epoch 4, Round 2 is Bear (100 < 130)
+      // Epoch 4, Round 2 is Under (100 < 130)
       await nextEpoch();
       const price100 = 10000000000; // $100
       await oracle.updateAnswer(price100);
@@ -677,11 +676,11 @@ contract(
       assert.equal(await stVol.claimable(2, Position.Over, overUser2), false);
       assert.equal(await stVol.claimable(2, Position.Under, underUser1), true);
 
-      // Claim for Round 2: Total rewards = 67, Bull = 43, Bear = 24
+      // Claim for Round 2: Total rewards = 62.7, Over = 43, Under = 24
 
       tx = await stVol.claim([2], Position.Under, { from: underUser1 }); // Success
       gasUsed = tx.receipt.gasUsed;
-      expectEvent(tx, "Claim", { sender: underUser1, epoch: new BN("2"), amount: ether("60.3") }); // 24 = 24/24 * (67*0.9)
+      expectEvent(tx, "Claim", { sender: underUser1, epoch: new BN("2"), amount: ether("62.7") }); // 24 = (24 * 62.7) / 24
 
       await expectRevert(stVol.claim([1], Position.Over, { from: overUser1 }), "Not eligible for claim");
       await expectRevert(stVol.claim([1], Position.Over, { from: overUser2 }), "Not eligible for claim");
@@ -717,7 +716,7 @@ contract(
       await stVol.participateOver(currentEpoch, ether("22"), { from: overUser2 }); // 22 USDC
       await stVol.participateUnder(currentEpoch, ether("24"), { from: underUser1 }); // 24 USDC
 
-      // Epoch 3, Round 1 is Bull (130 > 120)
+      // Epoch 3, Round 1 is Over (130 > 120)
       await nextEpoch();
       const price130 = 13000000000; // $130
       await oracle.updateAnswer(price130);
@@ -730,7 +729,7 @@ contract(
       assert.equal(await stVol.claimable(2, Position.Over, overUser2), false);
       assert.equal(await stVol.claimable(2, Position.Under, underUser1), false);
 
-      // Epoch 4, Round 2 is Bull (140 > 130)
+      // Epoch 4, Round 2 is Over (140 > 130)
       await nextEpoch();
       const price140 = 14000000000; // $140
       await oracle.updateAnswer(price140);
@@ -749,24 +748,24 @@ contract(
       let tx = await stVol.claim([1, 2], Position.Over, { from: overUser1 }); // Success
       let { gasUsed } = tx.receipt;
 
-      // 2.1 = 1/3 * (7*0.9) + // 29.4488372093 = 21 / 43 * (67 * 0.9) = 29.448837209302325581
-      expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("1"), amount: ether("2.1") });
+      // 2.2 = 1/3 * 6.6 // 31.548837209302325581 = 21 / 43 * 64.6 = 31.548837209302325581
+      expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("1"), amount: ether("2.2") }); 
 
       // Manual event handling for second event with same name from the same contract
       assert.equal(tx.logs[1].args.sender, overUser1);
       assert.equal(tx.logs[1].args.epoch, "2");
-      assert.equal(tx.logs[1].args.amount.toString(), ether("29.448837209302325581").toString());
+      assert.equal(tx.logs[1].args.amount.toString(), ether("31.548837209302325581").toString());
 
       tx = await stVol.claim([1, 2], Position.Over, { from: overUser2 }); // Success
       gasUsed = tx.receipt.gasUsed;
 
-      // 4.2 = 2/3 * (7*0.9) + // 30.851162790697674418 = 22 / 43 * (67 * 0.9) = 35.051162790697674418 USDC
-      expectEvent(tx, "Claim", { sender: overUser2, epoch: new BN("1"), amount: ether("4.2") });
+      // 4.4 = 2/3 * (6.6) + // 33.051162790697674418 = 22 / 43 * (64.6) = 33.051162790697674418 USDC
+      expectEvent(tx, "Claim", { sender: overUser2, epoch: new BN("1"), amount: ether("4.4") });
 
       // Manual event handling for second event with same name from the same contract
       assert.equal(tx.logs[1].args.sender, overUser2);
       assert.equal(tx.logs[1].args.epoch, "2");
-      assert.equal(tx.logs[1].args.amount.toString(), ether("30.851162790697674418").toString());
+      assert.equal(tx.logs[1].args.amount.toString(), ether("33.051162790697674418").toString());
 
       await expectRevert(stVol.claim([1, 2], Position.Over, { from: overUser1 }), "Not eligible for claim");
       await expectRevert(stVol.claim([2, 1], Position.Over, { from: overUser1 }), "Not eligible for claim");
@@ -836,7 +835,7 @@ contract(
       assert.equal(await stVol.treasuryAmount(), 0);
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), predictionCurrentUSDC.toString());
 
-      // Epoch 3, Round 1 is Bull (130 > 120)
+      // Epoch 3, Round 1 is Over (130 > 120)
       await nextEpoch();
       const price130 = 13000000000; // $130
       await oracle.updateAnswer(price130);
@@ -850,34 +849,34 @@ contract(
 
       // Admin claim for Round 1
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), predictionCurrentUSDC.toString());
-      assert.equal((await stVol.treasuryAmount()).toString(), ether("0.7").toString()); // 0.7 = 7 * 0.1
+      assert.equal((await stVol.treasuryAmount()).toString(), ether("0.4").toString()); // 0.4 = 4 * 0.1 (losing side amount)
       let tx = await stVol.claimTreasury({ from: admin }); // Success
       let { gasUsed } = tx.receipt;
-      expectEvent(tx, "TreasuryClaim", { amount: ether("0.7") });
+      expectEvent(tx, "TreasuryClaim", { amount: ether("0.4") });
       assert.equal(await stVol.treasuryAmount(), 0); // Empty
-      predictionCurrentUSDC = predictionCurrentUSDC.sub(ether("0.7"));
+      predictionCurrentUSDC = predictionCurrentUSDC.sub(ether("0.4"));
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), predictionCurrentUSDC.toString());
 
-      // Epoch 4
+      // Epoch 4, Round 2 is Over (140 > 130)
       await nextEpoch();
       const price140 = 14000000000; // $140
       await oracle.updateAnswer(price140); // Prevent house from winning
       await stVol.executeRound();
-      assert.equal((await stVol.treasuryAmount()).toString(), ether("6.7").toString()); // 6.7 = (21+22+24) * 0.1
+      assert.equal((await stVol.treasuryAmount()).toString(), ether("2.4").toString()); // 2.7 = 24 * 0.1
 
-      // Epoch 5
+      // Epoch 5, Round 3 is Over (150 > 140)
       await nextEpoch();
       const price150 = 15000000000; // $150
       await oracle.updateAnswer(price150); // Prevent house from winning
       await stVol.executeRound();
 
       // Admin claim for Round 1 and 2
-      assert.equal((await stVol.treasuryAmount()).toString(), ether("6.7").add(ether("9.7")).toString()); // 9.7 = (31+32+34) * 0.1
+      assert.equal((await stVol.treasuryAmount()).toString(), ether("2.4").add(ether("3.4")).toString()); // 3.4 = 34 * 0.1
       tx = await stVol.claimTreasury({ from: admin }); // Success
       gasUsed = tx.receipt.gasUsed;
-      expectEvent(tx, "TreasuryClaim", { amount: ether("16.4") }); // 16.4 = 6.7 + 9.7
+      expectEvent(tx, "TreasuryClaim", { amount: ether("5.8") }); // 5.8 = 2.4 + 3.4
       assert.equal(await stVol.treasuryAmount(), 0); // Empty
-      predictionCurrentUSDC = predictionCurrentUSDC.sub(ether("16.4"));
+      predictionCurrentUSDC = predictionCurrentUSDC.sub(ether("5.8"));
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), predictionCurrentUSDC.toString());
     });
 
@@ -924,7 +923,7 @@ contract(
       tx = await stVol.setCommissionfee("300", { from: admin });
       expectEvent(tx, "NewCommissionfee", { epoch: "0", commissionfee: "300" });
 
-      await expectRevert(stVol.setCommissionfee("3000", { from: admin }), "Treasury fee too high");
+      await expectRevert(stVol.setCommissionfee("3000", { from: admin }), "Commission fee too high");
 
       tx = await stVol.setAdmin(owner, { from: owner });
       expectEvent(tx, "NewAdminAddress", { admin: owner });

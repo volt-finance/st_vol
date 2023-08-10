@@ -28,10 +28,10 @@ export default {
     },
   },
   Treasury: {
-    mainnet: 300, // 3%
+    mainnet: 1000, // 10%
     goerli: 1000, // 10%
   },
-  BetAmount: {
+  MinParticipateAmount: {
     mainnet: 0.001,
     goerli: 0.001,
   },
