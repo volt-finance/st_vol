@@ -18,6 +18,8 @@ const MIN_AMOUNT = ether("1"); // 1 USDC
 const UPDATE_ALLOWANCE = 30 * BLOCK_COUNT_MULTPLIER; // 30s * multiplier
 const INITIAL_REWARD_RATE = 0.9; // 90%
 const INITIAL_TREASURY_RATE = 0.1; // 10%
+const INITIAL_OPERATE_RATE = 0.3; // 30%
+const INITIAL_PARTICIPATE_RATE = 0.7; // 70%
 
 // Enum: 0 = Over, 1 = Under
 const Position = {
@@ -36,7 +38,7 @@ const assertBNArray = (arr1: any[], arr2: any | any[]) => {
 
 contract(
   "StVol",
-  ([operator, admin, owner, overUser1, overUser2, overUser3, underUser1, underUser2, underUser3]) => {
+  ([operator, admin, owner, overUser1, overUser2, overUser3, underUser1, underUser2, underUser3, participantVolt]) => {
     // mock usdc total supply
     const _totalInitSupply = ether("10000000000");
     let currentEpoch: any;
@@ -68,11 +70,14 @@ contract(
         oracle.address,
         admin,
         operator,
+        participantVolt,
         INTERVAL_SECONDS,
         BUFFER_SECONDS,
         MIN_AMOUNT,
         UPDATE_ALLOWANCE,
         String(INITIAL_TREASURY_RATE * 10000),
+        String(INITIAL_OPERATE_RATE * 10000),
+        String(INITIAL_PARTICIPATE_RATE * 10000),
         { from: owner }
       );
       // approve usdc amount for stVol contract
@@ -749,7 +754,7 @@ contract(
       let { gasUsed } = tx.receipt;
 
       // 2.2 = 1/3 * 6.6 // 31.548837209302325581 = 21 / 43 * 64.6 = 31.548837209302325581
-      expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("1"), amount: ether("2.2") }); 
+      expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("1"), amount: ether("2.2") });
 
       // Manual event handling for second event with same name from the same contract
       assert.equal(tx.logs[1].args.sender, overUser1);
@@ -850,12 +855,21 @@ contract(
       // Admin claim for Round 1
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), predictionCurrentUSDC.toString());
       assert.equal((await stVol.treasuryAmount()).toString(), ether("0.4").toString()); // 0.4 = 4 * 0.1 (losing side amount)
+
+      const beforeOpBalance = (await mockUsdc.balanceOf(operator));
+      const beforePVBalance = (await mockUsdc.balanceOf(participantVolt));
+
       let tx = await stVol.claimTreasury({ from: admin }); // Success
+
+      const afterOpBalance = (await mockUsdc.balanceOf(operator));
+      const afterPVBalance = (await mockUsdc.balanceOf(participantVolt));
+
       let { gasUsed } = tx.receipt;
       expectEvent(tx, "TreasuryClaim", { amount: ether("0.4") });
       assert.equal(await stVol.treasuryAmount(), 0); // Empty
       predictionCurrentUSDC = predictionCurrentUSDC.sub(ether("0.4"));
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), predictionCurrentUSDC.toString());
+      assert.equal((afterOpBalance.add(afterPVBalance).sub(beforeOpBalance.add(beforePVBalance))).toString(), ether("0.4").toString());
 
       // Epoch 4, Round 2 is Over (140 > 130)
       await nextEpoch();

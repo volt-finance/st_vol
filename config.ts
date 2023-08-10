@@ -16,6 +16,10 @@ export default {
       mainnet: "",
       goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
     },
+    ParticipantVolt: {
+      mainnet: "",
+      goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
+    },
   },
   Block: {
     Interval: {
@@ -27,9 +31,17 @@ export default {
       goerli: 15,
     },
   },
-  Treasury: {
+  CommissionFee: {
     mainnet: 1000, // 10%
     goerli: 1000, // 10%
+  },
+  OperateRate: {
+    mainnet: 3000, // 30%
+    goerli: 3000, // 30%
+  },
+  ParticipantRate: {
+    mainnet: 7000, // 70%
+    goerli: 7000, // 70%
   },
   MinParticipateAmount: {
     mainnet: 0.001,

@@ -27,6 +27,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     address public adminAddress; // address of the admin
     address public operatorAddress; // address of the operator
     address public keeperAddress; // address of the keeper
+    address public participantVoltAddress; // address of the participant volt
 
     uint256 public bufferSeconds; // number of seconds for valid execution of a participate round
     uint256 public intervalSeconds; // interval in seconds between two participate rounds
@@ -34,12 +35,15 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     uint256 public minParticipateAmount; // minimum participate amount (denominated in wei)
     uint256 public commissionfee; // commission rate (e.g. 200 = 2%, 150 = 1.50%)
     uint256 public treasuryAmount; // treasury amount that was not claimed
+    uint256 public operateRate; // operate distribute rate (e.g. 200 = 2%, 150 = 1.50%)
+    uint256 public participantRate; // participant distribute rate (e.g. 200 = 2%, 150 = 1.50%)
 
     uint256 public currentEpoch; // current epoch for round
 
     uint256 public oracleLatestRoundId; // converted from uint80 (Chainlink)
     uint256 public oracleUpdateAllowance; // seconds
 
+    uint256 public constant BASE = 10000; // 100%
     uint256 public constant MAX_COMMISSION_FEE = 1000; // 10%
 
     mapping(uint256 => mapping(Position => mapping(address => ParticipateInfo)))
@@ -107,10 +111,12 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 minParticipateAmount
     );
     event NewCommissionfee(uint256 indexed epoch, uint256 commissionfee);
+    event NewDistributeRate(uint256 operateRate, uint256 participantRate);
     event NewOperatorAddress(address operator);
     event NewOracle(address oracle);
     event NewOracleUpdateAllowance(uint256 oracleUpdateAllowance);
     event NewKeeperAddress(address operator);
+    event NewParticipantVoltAddress(address participantVolt);
 
     event Pause(uint256 indexed epoch);
     event RewardsCalculated(
@@ -163,37 +169,50 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @param _oracleAddress: oracle address
      * @param _adminAddress: admin address
      * @param _operatorAddress: operator address
+     * @param _participantVoltAddress: participant volt address
      * @param _intervalSeconds: number of time within an interval
      * @param _bufferSeconds: buffer of time for resolution of price
      * @param _minParticipateAmount: minimum participate amounts (in wei)
      * @param _oracleUpdateAllowance: oracle update allowance
-     * @param _commissionfee: treasury fee (1000 = 10%)
+     * @param _commissionfee: commission fee (1000 = 10%)
+     * @param _operateRate: operate rate (3000 = 30%)
+     * @param _participantRate: participant rate (7000 = 70%)
      */
     constructor(
         IERC20 _token,
         address _oracleAddress,
         address _adminAddress,
         address _operatorAddress,
+        address _participantVoltAddress,
         uint256 _intervalSeconds,
         uint256 _bufferSeconds,
         uint256 _minParticipateAmount,
         uint256 _oracleUpdateAllowance,
-        uint256 _commissionfee
+        uint256 _commissionfee,
+        uint256 _operateRate,
+        uint256 _participantRate
     ) {
         require(
             _commissionfee <= MAX_COMMISSION_FEE,
             "Commission fee too high"
+        );
+        require(
+            _operateRate + _participantRate == BASE,
+            "Distribute total rate must be 10000 (100%)"
         );
 
         token = _token;
         oracle = AggregatorV3Interface(_oracleAddress);
         adminAddress = _adminAddress;
         operatorAddress = _operatorAddress;
+        participantVoltAddress = _participantVoltAddress;
         intervalSeconds = _intervalSeconds;
         bufferSeconds = _bufferSeconds;
         minParticipateAmount = _minParticipateAmount;
         oracleUpdateAllowance = _oracleUpdateAllowance;
         commissionfee = _commissionfee;
+        operateRate = _operateRate;
+        participantRate = _participantRate;
     }
 
     /**
@@ -389,7 +408,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     function claimTreasury() external nonReentrant onlyAdmin {
         uint256 currentTreasuryAmount = treasuryAmount;
         treasuryAmount = 0;
-        token.safeTransfer(adminAddress, currentTreasuryAmount);
+        
+        // operator 30%, participant volt 70%
+        token.safeTransfer(operatorAddress, (currentTreasuryAmount * operateRate) / BASE);
+        token.safeTransfer(participantVoltAddress, (currentTreasuryAmount * participantRate) / BASE);
+
         emit TreasuryClaim(currentTreasuryAmount);
     }
 
@@ -460,6 +483,22 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
+     * @notice Set participant volt address
+     * @dev Callable by admin
+     */
+    function setParticipantVolt(
+        address _participantVoltAddress
+    ) external onlyAdmin {
+        require(
+            _participantVoltAddress != address(0),
+            "Cannot be zero address"
+        );
+        participantVoltAddress = _participantVoltAddress;
+
+        emit NewParticipantVoltAddress(_participantVoltAddress);
+    }
+
+    /**
      * @notice Set Oracle address
      * @dev Callable by admin
      */
@@ -500,6 +539,25 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         commissionfee = _commissionfee;
 
         emit NewCommissionfee(currentEpoch, commissionfee);
+    }
+
+    /**
+     * @notice Set distribute rate
+     * @dev Callable by admin
+     */
+    function setDistributeRate(
+        uint256 _operateRate,
+        uint256 _participantRate
+    ) external whenPaused onlyAdmin {
+        require(
+            _operateRate + _participantRate == BASE,
+            "Distribute total rate must be 10000 (100%)"
+        );
+        operateRate = _operateRate;
+
+        participantRate = _participantRate;
+
+        emit NewDistributeRate(operateRate, participantRate);
     }
 
     /**
@@ -651,13 +709,13 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         // Over wins
         if (round.closePrice > round.startPrice) {
             rewardBaseCalAmount = round.overAmount;
-            treasuryAmt = (round.underAmount * commissionfee) / 10000;
+            treasuryAmt = (round.underAmount * commissionfee) / BASE;
             rewardAmount = round.totalAmount - treasuryAmt;
         }
         // Under wins
         else if (round.closePrice < round.startPrice) {
             rewardBaseCalAmount = round.underAmount;
-            treasuryAmt = (round.overAmount * commissionfee) / 10000;
+            treasuryAmt = (round.overAmount * commissionfee) / BASE;
             rewardAmount = round.totalAmount - treasuryAmt;
         }
         // House wins

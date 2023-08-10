@@ -15,9 +15,16 @@ const main = async () => {
       config.Address.Usdc[networkName] === ethers.constants.AddressZero ||
       config.Address.Oracle[networkName] === ethers.constants.AddressZero ||
       config.Address.Admin[networkName] === ethers.constants.AddressZero ||
-      config.Address.Operator[networkName] === ethers.constants.AddressZero
+      config.Address.Operator[networkName] === ethers.constants.AddressZero ||
+      config.Address.ParticipantVolt[networkName] === ethers.constants.AddressZero
     ) {
       throw new Error("Missing addresses (Chainlink Oracle and/or Admin/Operator)");
+    }
+    // Check if the distribute total rate in the config is 10000 
+    if (
+      config.OperateRate[networkName] + config.ParticipantRate[networkName] !== 10000
+    ) {
+      throw new Error("Distribute total rate must be 10000 (100%)");
     }
 
     // Compile contracts.
@@ -29,11 +36,14 @@ const main = async () => {
     console.log("Oracle: %s", config.Address.Oracle[networkName]);
     console.log("Admin: %s", config.Address.Admin[networkName]);
     console.log("Operator: %s", config.Address.Operator[networkName]);
+    console.log("ParticipantVolt: %s", config.Address.ParticipantVolt[networkName]);
     console.log("Block.Interval: %s", config.Block.Interval[networkName]);
     console.log("Block.Buffer: %s", config.Block.Buffer[networkName]);
     console.log("BetAmount: %s", parseEther(config.MinParticipateAmount[networkName].toString()).toString());
     console.log("OracleUpdateAllowance: %s", config.OracleUpdateAllowance[networkName]);
-    console.log("Treasury: %s", config.Treasury[networkName]);
+    console.log("CommissionFee: %s", config.CommissionFee[networkName]);
+    console.log("OperateRate: %s", config.OperateRate[networkName]);
+    console.log("ParticipantRate: %s", config.ParticipantRate[networkName]);
     console.log("===========================================");
 
     // Deploy contracts.
@@ -43,11 +53,14 @@ const main = async () => {
       config.Address.Oracle[networkName],
       config.Address.Admin[networkName],
       config.Address.Operator[networkName],
+      config.Address.ParticipantVolt[networkName],
       config.Block.Interval[networkName],
       config.Block.Buffer[networkName],
       parseEther(config.MinParticipateAmount[networkName].toString()).toString(),
       config.OracleUpdateAllowance[networkName],
-      config.Treasury[networkName]
+      config.CommissionFee[networkName],
+      config.OperateRate[networkName],
+      config.ParticipantRate[networkName]
     );
 
     await stVolContract.deployed();
@@ -65,7 +78,9 @@ const main = async () => {
         config.Block.Buffer[networkName],
         parseEther(config.MinParticipateAmount[networkName].toString()).toString(),
         config.OracleUpdateAllowance[networkName],
-        config.Treasury[networkName]
+        config.CommissionFee[networkName],
+        config.OperateRate[networkName],
+        config.ParticipantRate[networkName]
       ]
     });
     console.log('verify the contractAction done');
