@@ -283,50 +283,48 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
     /**
      * @notice Claim reward for an array of epochs
-     * @param epochs: array of epochs
+     * @param epoch: epoch
      */
     function claim(
-        uint256[] calldata epochs,
+        uint256 epoch,
         Position position
     ) external nonReentrant notContract {
         uint256 reward; // Initializes reward
 
-        for (uint256 i = 0; i < epochs.length; i++) {
+        require(
+            rounds[epoch].openTimestamp != 0,
+            "Round has not started"
+        );
+        require(
+            block.timestamp > rounds[epoch].closeTimestamp,
+            "Round has not ended"
+        );
+
+        uint256 addedReward = 0;
+
+        // Round valid, claim rewards
+        if (rounds[epoch].oracleCalled) {
             require(
-                rounds[epochs[i]].openTimestamp != 0,
-                "Round has not started"
+                claimable(epoch, position, msg.sender),
+                "Not eligible for claim"
             );
+            Round memory round = rounds[epoch];
+            addedReward +=
+                (ledger[epoch][position][msg.sender].amount *
+                    round.rewardAmount) /
+                round.rewardBaseCalAmount;
+        } else {
+            // Round invalid, refund Participate amount
             require(
-                block.timestamp > rounds[epochs[i]].closeTimestamp,
-                "Round has not ended"
+                refundable(epoch, position, msg.sender),
+                "Not eligible for refund"
             );
-
-            uint256 addedReward = 0;
-
-            // Round valid, claim rewards
-            if (rounds[epochs[i]].oracleCalled) {
-                require(
-                    claimable(epochs[i], position, msg.sender),
-                    "Not eligible for claim"
-                );
-                Round memory round = rounds[epochs[i]];
-                addedReward +=
-                    (ledger[epochs[i]][position][msg.sender].amount *
-                        round.rewardAmount) /
-                    round.rewardBaseCalAmount;
-            } else {
-                // Round invalid, refund Participate amount
-                require(
-                    refundable(epochs[i], position, msg.sender),
-                    "Not eligible for refund"
-                );
-                addedReward += ledger[epochs[i]][position][msg.sender].amount;
-            }
-            ledger[epochs[i]][position][msg.sender].claimed = true;
-            reward += addedReward;
-
-            emit Claim(msg.sender, epochs[i], addedReward);
+            addedReward += ledger[epoch][position][msg.sender].amount;
         }
+        ledger[epoch][position][msg.sender].claimed = true;
+        reward += addedReward;
+
+        emit Claim(msg.sender, epoch, addedReward);
 
         if (reward > 0) {
             token.safeTransfer(msg.sender, reward);

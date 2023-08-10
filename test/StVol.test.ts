@@ -608,12 +608,12 @@ contract(
       assert.equal(await stVol.claimable(1, Position.Over, overUser1), false);
       assert.equal(await stVol.claimable(1, Position.Over, overUser2), false);
       assert.equal(await stVol.claimable(1, Position.Under, underUser1), false);
-      await expectRevert(stVol.claim([1], Position.Over, { from: overUser1 }), "Round has not ended");
-      await expectRevert(stVol.claim([1], Position.Over, { from: overUser2 }), "Round has not ended");
-      await expectRevert(stVol.claim([1], Position.Under, { from: underUser1 }), "Round has not ended");
-      await expectRevert(stVol.claim([2], Position.Over, { from: overUser1 }), "Round has not started");
-      await expectRevert(stVol.claim([2], Position.Over, { from: overUser2 }), "Round has not started");
-      await expectRevert(stVol.claim([2], Position.Under, { from: underUser1 }), "Round has not started");
+      await expectRevert(stVol.claim(1, Position.Over, { from: overUser1 }), "Round has not ended");
+      await expectRevert(stVol.claim(1, Position.Over, { from: overUser2 }), "Round has not ended");
+      await expectRevert(stVol.claim(1, Position.Under, { from: underUser1 }), "Round has not ended");
+      await expectRevert(stVol.claim(2, Position.Over, { from: overUser1 }), "Round has not started");
+      await expectRevert(stVol.claim(2, Position.Over, { from: overUser2 }), "Round has not started");
+      await expectRevert(stVol.claim(2, Position.Under, { from: underUser1 }), "Round has not started");
 
       // Epoch 2
       await nextEpoch();
@@ -632,12 +632,12 @@ contract(
       assert.equal(await stVol.claimable(2, Position.Over, overUser1), false);
       assert.equal(await stVol.claimable(2, Position.Over, overUser2), false);
       assert.equal(await stVol.claimable(2, Position.Under, underUser1), false);
-      await expectRevert(stVol.claim([1], Position.Over, { from: overUser1 }), "Round has not ended");
-      await expectRevert(stVol.claim([1], Position.Over, { from: overUser2 }), "Round has not ended");
-      await expectRevert(stVol.claim([1], Position.Under, { from: underUser1 }), "Round has not ended");
-      await expectRevert(stVol.claim([2], Position.Over, { from: overUser1 }), "Round has not ended");
-      await expectRevert(stVol.claim([2], Position.Over, { from: overUser2 }), "Round has not ended");
-      await expectRevert(stVol.claim([2], Position.Under, { from: underUser1 }), "Round has not ended");
+      await expectRevert(stVol.claim(1, Position.Over, { from: overUser1 }), "Round has not ended");
+      await expectRevert(stVol.claim(1, Position.Over, { from: overUser2 }), "Round has not ended");
+      await expectRevert(stVol.claim(1, Position.Under, { from: underUser1 }), "Round has not ended");
+      await expectRevert(stVol.claim(2, Position.Over, { from: overUser1 }), "Round has not ended");
+      await expectRevert(stVol.claim(2, Position.Over, { from: overUser2 }), "Round has not ended");
+      await expectRevert(stVol.claim(2, Position.Under, { from: underUser1 }), "Round has not ended");
 
       // Epoch 3, Round 1 is Bull (130 > 120)
       await nextEpoch();
@@ -653,20 +653,20 @@ contract(
       assert.equal(await stVol.claimable(2, Position.Under, underUser1), false);
 
       // Claim for Round 1: Total rewards = 6.6, Over = 3, Under = 4
-      let tx = await stVol.claim([1], Position.Over, { from: overUser1 }); // Success
+      let tx = await stVol.claim(1, Position.Over, { from: overUser1 }); // Success
       let { gasUsed } = tx.receipt;
 
       expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("1"), amount: ether("2.2") }); // 2.2 = (1 * 6.6) / 3
 
-      tx = await stVol.claim([1], Position.Over, { from: overUser2 }); // Success
+      tx = await stVol.claim(1, Position.Over, { from: overUser2 }); // Success
       gasUsed = tx.receipt.gasUsed;
 
       expectEvent(tx, "Claim", { sender: overUser2, epoch: new BN("1"), amount: ether("4.4") }); // 4.4 = (2 * 6.6) / 3
 
-      await expectRevert(stVol.claim([1], Position.Under, { from: underUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([2], Position.Over, { from: overUser1 }), "Round has not ended");
-      await expectRevert(stVol.claim([2], Position.Over, { from: overUser2 }), "Round has not ended");
-      await expectRevert(stVol.claim([2], Position.Under, { from: underUser1 }), "Round has not ended");
+      await expectRevert(stVol.claim(1, Position.Under, { from: underUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim(2, Position.Over, { from: overUser1 }), "Round has not ended");
+      await expectRevert(stVol.claim(2, Position.Over, { from: overUser2 }), "Round has not ended");
+      await expectRevert(stVol.claim(2, Position.Under, { from: underUser1 }), "Round has not ended");
 
       // Epoch 4, Round 2 is Under (100 < 130)
       await nextEpoch();
@@ -683,16 +683,16 @@ contract(
 
       // Claim for Round 2: Total rewards = 62.7, Over = 43, Under = 24
 
-      tx = await stVol.claim([2], Position.Under, { from: underUser1 }); // Success
+      tx = await stVol.claim(2, Position.Under, { from: underUser1 }); // Success
       gasUsed = tx.receipt.gasUsed;
       expectEvent(tx, "Claim", { sender: underUser1, epoch: new BN("2"), amount: ether("62.7") }); // 24 = (24 * 62.7) / 24
 
-      await expectRevert(stVol.claim([1], Position.Over, { from: overUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([1], Position.Over, { from: overUser2 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([1], Position.Under, { from: underUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([2], Position.Over, { from: overUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([2], Position.Over, { from: overUser2 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([2], Position.Under, { from: underUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim(1, Position.Over, { from: overUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim(1, Position.Over, { from: overUser2 }), "Not eligible for claim");
+      await expectRevert(stVol.claim(1, Position.Under, { from: underUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim(2, Position.Over, { from: overUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim(2, Position.Over, { from: overUser2 }), "Not eligible for claim");
+      await expectRevert(stVol.claim(2, Position.Under, { from: underUser1 }), "Not eligible for claim");
     });
 
     it("Should multi claim rewards", async () => {
@@ -747,37 +747,30 @@ contract(
       assert.equal(await stVol.claimable(2, Position.Over, overUser2), true);
       assert.equal(await stVol.claimable(2, Position.Under, underUser1), false);
 
-      await expectRevert(stVol.claim([2, 2], Position.Over, { from: overUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([1, 1], Position.Over, { from: overUser1 }), "Not eligible for claim");
-
-      let tx = await stVol.claim([1, 2], Position.Over, { from: overUser1 }); // Success
+      let tx = await stVol.claim(1, Position.Over, { from: overUser1 }); // Success
       let { gasUsed } = tx.receipt;
-
-      // 2.2 = 1/3 * 6.6 // 31.548837209302325581 = 21 / 43 * 64.6 = 31.548837209302325581
+      // 2.2 = 1/3 * 6.6 
       expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("1"), amount: ether("2.2") });
 
-      // Manual event handling for second event with same name from the same contract
-      assert.equal(tx.logs[1].args.sender, overUser1);
-      assert.equal(tx.logs[1].args.epoch, "2");
-      assert.equal(tx.logs[1].args.amount.toString(), ether("31.548837209302325581").toString());
+      tx = await stVol.claim(2, Position.Over, { from: overUser1 }); // Success
+      // 31.548837209302325581 = 21 / 43 * 64.6 = 31.548837209302325581
+      expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("2"), amount: ether("31.548837209302325581") });
 
-      tx = await stVol.claim([1, 2], Position.Over, { from: overUser2 }); // Success
+      tx = await stVol.claim(1, Position.Over, { from: overUser2 }); // Success
       gasUsed = tx.receipt.gasUsed;
 
-      // 4.4 = 2/3 * (6.6) + // 33.051162790697674418 = 22 / 43 * (64.6) = 33.051162790697674418 USDC
+      // 4.4 = 2/3 * (6.6)
       expectEvent(tx, "Claim", { sender: overUser2, epoch: new BN("1"), amount: ether("4.4") });
+      tx = await stVol.claim(2, Position.Over, { from: overUser2 }); // Success
+      // 33.051162790697674418 = 22 / 43 * (64.6) = 33.051162790697674418 USDC
+      expectEvent(tx, "Claim", { sender: overUser2, epoch: new BN("2"), amount: ether("33.051162790697674418") });
 
-      // Manual event handling for second event with same name from the same contract
-      assert.equal(tx.logs[1].args.sender, overUser2);
-      assert.equal(tx.logs[1].args.epoch, "2");
-      assert.equal(tx.logs[1].args.amount.toString(), ether("33.051162790697674418").toString());
-
-      await expectRevert(stVol.claim([1, 2], Position.Over, { from: overUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([2, 1], Position.Over, { from: overUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([1, 2], Position.Over, { from: overUser2 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([2, 1], Position.Over, { from: overUser2 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([1], Position.Under, { from: underUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([2], Position.Under, { from: underUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim(1, Position.Over, { from: overUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim(2, Position.Over, { from: overUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim(1, Position.Over, { from: overUser2 }), "Not eligible for claim");
+      await expectRevert(stVol.claim(2, Position.Over, { from: overUser2 }), "Not eligible for claim");
+      await expectRevert(stVol.claim(1, Position.Under, { from: underUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim(2, Position.Under, { from: underUser1 }), "Not eligible for claim");
     });
 
     it("Should record house wins", async () => {
@@ -801,18 +794,18 @@ contract(
       await oracle.updateAnswer(price110);
       await stVol.executeRound();
 
-      let tx = await stVol.claim([1], Position.Over, { from: overUser1 }); // Success
+      let tx = await stVol.claim(1, Position.Over, { from: overUser1 }); // Success
       expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("1"), amount: ether("1") });
-      tx = await stVol.claim([1], Position.Over, { from: overUser2 }); // Success
+      tx = await stVol.claim(1, Position.Over, { from: overUser2 }); // Success
       expectEvent(tx, "Claim", { sender: overUser2, epoch: new BN("1"), amount: ether("2") });
-      tx = await stVol.claim([1], Position.Under, { from: underUser1 }); // Success
+      tx = await stVol.claim(1, Position.Under, { from: underUser1 }); // Success
       expectEvent(tx, "Claim", { sender: underUser1, epoch: new BN("1"), amount: ether("4") });
 
       assert.equal((await stVol.treasuryAmount()).toString(), ether("0").toString()); // 0
 
-      await expectRevert(stVol.claim([1], Position.Over, { from: overUser1 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([1], Position.Over, { from: overUser2 }), "Not eligible for claim");
-      await expectRevert(stVol.claim([1], Position.Under, { from: underUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim(1, Position.Over, { from: overUser1 }), "Not eligible for claim");
+      await expectRevert(stVol.claim(1, Position.Over, { from: overUser2 }), "Not eligible for claim");
+      await expectRevert(stVol.claim(1, Position.Under, { from: underUser1 }), "Not eligible for claim");
     });
 
     it("Should claim treasury rewards", async () => {
@@ -1023,21 +1016,21 @@ contract(
       assert.equal(await stVol.refundable(1, Position.Over, overUser2), true);
       assert.equal(await stVol.refundable(1, Position.Under, underUser1), true);
 
-      let tx = await stVol.claim([1], Position.Over, { from: overUser1 }); // Success
+      let tx = await stVol.claim(1, Position.Over, { from: overUser1 }); // Success
       let { gasUsed } = tx.receipt;
       expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("1"), amount: ether("1") }); // 1, 100% of amount
 
-      tx = await stVol.claim([1], Position.Over, { from: overUser2 }); // Success
+      tx = await stVol.claim(1, Position.Over, { from: overUser2 }); // Success
       gasUsed = tx.receipt.gasUsed;
       expectEvent(tx, "Claim", { sender: overUser2, epoch: new BN(1), amount: ether("2") }); // 2, 100% of amount
 
-      tx = await stVol.claim([1], Position.Under, { from: underUser1 }); // Success
+      tx = await stVol.claim(1, Position.Under, { from: underUser1 }); // Success
       gasUsed = tx.receipt.gasUsed;
       expectEvent(tx, "Claim", { sender: underUser1, epoch: new BN(1), amount: ether("4") }); // 4, 100% of amount
 
-      await expectRevert(stVol.claim([1], Position.Over, { from: overUser1 }), "Not eligible for refund");
-      await expectRevert(stVol.claim([1], Position.Over, { from: overUser2 }), "Not eligible for refund");
-      await expectRevert(stVol.claim([1], Position.Under, { from: underUser1 }), "Not eligible for refund");
+      await expectRevert(stVol.claim(1, Position.Over, { from: overUser1 }), "Not eligible for refund");
+      await expectRevert(stVol.claim(1, Position.Over, { from: overUser2 }), "Not eligible for refund");
+      await expectRevert(stVol.claim(1, Position.Under, { from: underUser1 }), "Not eligible for refund");
 
       // Treasury amount should be empty
       assert.equal(await stVol.treasuryAmount(), 0);
@@ -1127,7 +1120,7 @@ contract(
       expectEvent(tx, "Pause", { epoch: new BN(3) });
       await expectRevert(stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }), "Pausable: paused");
       await expectRevert(stVol.participateUnder(currentEpoch, ether("1"), { from: underUser1 }), "Pausable: paused");
-      await expectRevert(stVol.claim([1], Position.Over, { from: overUser1 }), "Not eligible for claim"); // Success
+      await expectRevert(stVol.claim(1, Position.Over, { from: overUser1 }), "Not eligible for claim"); // Success
     });
 
     it("Should prevent round operations when paused", async () => {
