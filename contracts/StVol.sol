@@ -358,7 +358,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Lock genesis round
+     * @notice Start genesis round
      * @dev Callable by operator
      */
     function genesisStartRound() external whenNotPaused onlyKeeperOrOperator {
