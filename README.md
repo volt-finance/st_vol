@@ -2,6 +2,8 @@
 
 ## Description
 
+Digital option market for crypto trade on 1 day price change
+
 
 ## Documentation
 
@@ -28,9 +30,9 @@ When a round is started, the round's `lockBlock` and `closeBlock` would be set.
 The rounds are always kick-started with:
 
 ```
-startGenesisRound()
+openGenesisRound()
 (wait for x blocks)
-lockGenesisRound()
+startGenesisRound()
 (wait for x blocks)
 executeRound()
 ```
@@ -52,9 +54,9 @@ After errors like missing `executeRound()` etc.
 pause()
 (Users can't bet, but still is able to withdraw)
 unpause()
-startGenesisRound()
+openGenesisRound()
 (wait for x blocks)
-lockGenesisRound()
+startGenesisRound()
 (wait for x blocks)
 executeRound()
 ```
