@@ -27,7 +27,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     address public adminAddress; // address of the admin
     address public operatorAddress; // address of the operator
     address public keeperAddress; // address of the keeper
-    address public participantVoltAddress; // address of the participant volt
+    address public participantVaultAddress; // address of the participant vault
 
     uint256 public bufferSeconds; // number of seconds for valid execution of a participate round
     uint256 public intervalSeconds; // interval in seconds between two participate rounds
@@ -44,7 +44,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     uint256 public oracleUpdateAllowance; // seconds
 
     uint256 public constant BASE = 10000; // 100%
-    uint256 public constant MAX_COMMISSION_FEE = 1000; // 10%
+    uint256 public constant MAX_COMMISSION_FEE = 200; // 2%
 
     mapping(uint256 => mapping(Position => mapping(address => ParticipateInfo)))
         public ledger;
@@ -116,7 +116,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     event NewOracle(address oracle);
     event NewOracleUpdateAllowance(uint256 oracleUpdateAllowance);
     event NewKeeperAddress(address operator);
-    event NewParticipantVoltAddress(address participantVolt);
+    event NewParticipantVaultAddress(address participantVault);
 
     event Pause(uint256 indexed epoch);
     event RewardsCalculated(
@@ -169,7 +169,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @param _oracleAddress: oracle address
      * @param _adminAddress: admin address
      * @param _operatorAddress: operator address
-     * @param _participantVoltAddress: participant volt address
+     * @param _participantVaultAddress: participant vault address
      * @param _intervalSeconds: number of time within an interval
      * @param _bufferSeconds: buffer of time for resolution of price
      * @param _minParticipateAmount: minimum participate amounts (in wei)
@@ -183,7 +183,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         address _oracleAddress,
         address _adminAddress,
         address _operatorAddress,
-        address _participantVoltAddress,
+        address _participantVaultAddress,
         uint256 _intervalSeconds,
         uint256 _bufferSeconds,
         uint256 _minParticipateAmount,
@@ -205,7 +205,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         oracle = AggregatorV3Interface(_oracleAddress);
         adminAddress = _adminAddress;
         operatorAddress = _operatorAddress;
-        participantVoltAddress = _participantVoltAddress;
+        participantVaultAddress = _participantVaultAddress;
         intervalSeconds = _intervalSeconds;
         bufferSeconds = _bufferSeconds;
         minParticipateAmount = _minParticipateAmount;
@@ -407,9 +407,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 currentTreasuryAmount = treasuryAmount;
         treasuryAmount = 0;
         
-        // operator 30%, participant volt 70%
+        // operator 30%, participant vault 70%
         token.safeTransfer(operatorAddress, (currentTreasuryAmount * operateRate) / BASE);
-        token.safeTransfer(participantVoltAddress, (currentTreasuryAmount * participantRate) / BASE);
+        token.safeTransfer(participantVaultAddress, (currentTreasuryAmount * participantRate) / BASE);
 
         emit TreasuryClaim(currentTreasuryAmount);
     }
@@ -481,19 +481,19 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Set participant volt address
+     * @notice Set participant vault address
      * @dev Callable by admin
      */
-    function setParticipantVolt(
-        address _participantVoltAddress
+    function setParticipantVault(
+        address _participantVaultAddress
     ) external onlyAdmin {
         require(
-            _participantVoltAddress != address(0),
+            _participantVaultAddress != address(0),
             "Cannot be zero address"
         );
-        participantVoltAddress = _participantVoltAddress;
+        participantVaultAddress = _participantVaultAddress;
 
-        emit NewParticipantVoltAddress(_participantVoltAddress);
+        emit NewParticipantVaultAddress(_participantVaultAddress);
     }
 
     /**
@@ -717,7 +717,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             treasuryAmt = (round.overAmount * commissionfee) / BASE;
             rewardAmount = round.totalAmount - treasuryAmt;
         }
-        // House wins refund participant amount to users
+        // No one wins refund participant amount to users
         else {
             rewardBaseCalAmount = round.totalAmount;
             rewardAmount = round.totalAmount;

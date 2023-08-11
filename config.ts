@@ -32,8 +32,8 @@ export default {
     },
   },
   CommissionFee: {
-    mainnet: 1000, // 10%
-    goerli: 1000, // 10%
+    mainnet: 200, // 2%
+    goerli: 200, // 2%
   },
   OperateRate: {
     mainnet: 3000, // 30%
