@@ -282,7 +282,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Claim reward for an array of epochs
+     * @notice Claim reward for an epoch
      * @param epoch: epoch
      */
     function claim(
