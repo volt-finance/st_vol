@@ -30,9 +30,9 @@ When a round is started, the round's `lockBlock` and `closeBlock` would be set.
 The rounds are always kick-started with:
 
 ```
-openGenesisRound()
+genesisOpenRound()
 (wait for x blocks)
-startGenesisRound()
+genesisStartRound()
 (wait for x blocks)
 executeRound()
 ```
@@ -52,11 +52,11 @@ After errors like missing `executeRound()` etc.
 
 ```
 pause()
-(Users can't bet, but still is able to withdraw)
+(Users can't participant, but still is able to withdraw)
 unpause()
-openGenesisRound()
+genesisOpenRound()
 (wait for x blocks)
-startGenesisRound()
+genesisStartRound()
 (wait for x blocks)
 executeRound()
 ```
