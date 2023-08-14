@@ -16,7 +16,7 @@ export default {
       mainnet: "",
       goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
     },
-    ParticipantVolt: {
+    ParticipantVault: {
       mainnet: "",
       goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
     },

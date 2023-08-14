@@ -16,7 +16,7 @@ const main = async () => {
       config.Address.Oracle[networkName] === ethers.constants.AddressZero ||
       config.Address.Admin[networkName] === ethers.constants.AddressZero ||
       config.Address.Operator[networkName] === ethers.constants.AddressZero ||
-      config.Address.ParticipantVolt[networkName] === ethers.constants.AddressZero
+      config.Address.ParticipantVault[networkName] === ethers.constants.AddressZero
     ) {
       throw new Error("Missing addresses (Chainlink Oracle and/or Admin/Operator)");
     }
@@ -36,7 +36,7 @@ const main = async () => {
     console.log("Oracle: %s", config.Address.Oracle[networkName]);
     console.log("Admin: %s", config.Address.Admin[networkName]);
     console.log("Operator: %s", config.Address.Operator[networkName]);
-    console.log("ParticipantVolt: %s", config.Address.ParticipantVolt[networkName]);
+    console.log("ParticipantVolt: %s", config.Address.ParticipantVault[networkName]);
     console.log("Block.Interval: %s", config.Block.Interval[networkName]);
     console.log("Block.Buffer: %s", config.Block.Buffer[networkName]);
     console.log("BetAmount: %s", parseEther(config.MinParticipateAmount[networkName].toString()).toString());
@@ -53,7 +53,7 @@ const main = async () => {
       config.Address.Oracle[networkName],
       config.Address.Admin[networkName],
       config.Address.Operator[networkName],
-      config.Address.ParticipantVolt[networkName],
+      config.Address.ParticipantVault[networkName],
       config.Block.Interval[networkName],
       config.Block.Buffer[networkName],
       parseEther(config.MinParticipateAmount[networkName].toString()).toString(),
@@ -74,6 +74,7 @@ const main = async () => {
         config.Address.Oracle[networkName],
         config.Address.Admin[networkName],
         config.Address.Operator[networkName],
+        config.Address.ParticipantVault[networkName],
         config.Block.Interval[networkName],
         config.Block.Buffer[networkName],
         parseEther(config.MinParticipateAmount[networkName].toString()).toString(),
