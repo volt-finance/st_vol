@@ -91,8 +91,8 @@ export default {
     apiKey: {
       mainnet: etherscanKey,
       goerli: etherscanKey,
-      arbitrum: etherscanKey,
-      arbitrumGoerli: etherscanKey,
+      // arbitrum: etherscanKey,
+      // arbitrumGoerli: etherscanKey,
     }
   },
   abiExporter: {
