@@ -14,7 +14,7 @@ const DECIMALS = 8; // Chainlink default for ETH/USD
 const INITIAL_PRICE = 10000000000; // $100, 8 decimal places
 const INTERVAL_SECONDS = 20 * BLOCK_COUNT_MULTPLIER; // 20 seconds * multiplier
 const BUFFER_SECONDS = 5 * BLOCK_COUNT_MULTPLIER; // 5 seconds * multplier, round must lock/end within this buffer
-const MIN_AMOUNT = ether("1"); // 1 USDC
+const MIN_AMOUNT = ether("0.000001"); // 1 USDC
 const UPDATE_ALLOWANCE = 30 * BLOCK_COUNT_MULTPLIER; // 30s * multiplier
 const INITIAL_REWARD_RATE = 0.9; // 90%
 const INITIAL_COMMISSION_RATE = 0.02; // 2%
@@ -471,7 +471,7 @@ contract(
       currentEpoch = await stVol.currentEpoch();
 
       await expectRevert(
-        stVol.participateOver(currentEpoch, ether("0.5"), { from: overUser1 }),
+        stVol.participateOver(currentEpoch, ether("0.0000005"), { from: overUser1 }),
         "Participate amount must be greater than minParticipateAmount"
       ); // 0.5 USDC
       await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }); // Success
@@ -482,7 +482,7 @@ contract(
       currentEpoch = await stVol.currentEpoch();
 
       await expectRevert(
-        stVol.participateOver(currentEpoch, ether("0.5"), { from: overUser1 }),
+        stVol.participateOver(currentEpoch, ether("0.0000005"), { from: overUser1 }),
         "Participate amount must be greater than minParticipateAmount"
       ); // 0.5 USDC
       await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }); // Success
@@ -494,7 +494,7 @@ contract(
       currentEpoch = await stVol.currentEpoch();
 
       await expectRevert(
-        stVol.participateOver(currentEpoch, ether("0.5"), { from: overUser1 }),
+        stVol.participateOver(currentEpoch, ether("0.0000005"), { from: overUser1 }),
         "Participate amount must be greater than minParticipateAmount"
       ); // 0.5 USDC
       await stVol.participateOver(currentEpoch, ether("1"), { from: overUser1 }); // Success
@@ -1056,11 +1056,11 @@ contract(
 
       // Participate must be higher (or equal) than minParticipateAmount
       await expectRevert(
-        stVol.participateUnder("1", ether("0.999999"), { from: overUser1 }),
+        stVol.participateUnder("1", ether("0.0000001"), { from: overUser1 }),
         "Participate amount must be greater than minParticipateAmount"
       );
       await expectRevert(
-        stVol.participateOver("1", ether("0.999999"), { from: overUser1 }),
+        stVol.participateOver("1", ether("0.0000001"), { from: overUser1 }),
         "Participate amount must be greater than minParticipateAmount"
       );
     });

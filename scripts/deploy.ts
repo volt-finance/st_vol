@@ -7,7 +7,11 @@ const main = async () => {
   const networkName = network.name;
 
   // Check if the network is supported.
-  if (networkName === "goerli" || networkName === "mainnet") {
+  if (networkName === "goerli"
+    || networkName === "mainnet"
+    || networkName === "arbitrum"
+    || networkName === "arbitrum_goerli"
+  ) {
     console.log(`Deploying to ${networkName} network...`);
 
     // Check if the addresses in the config are set.
@@ -39,7 +43,7 @@ const main = async () => {
     console.log("ParticipantVolt: %s", config.Address.ParticipantVault[networkName]);
     console.log("Block.Interval: %s", config.Block.Interval[networkName]);
     console.log("Block.Buffer: %s", config.Block.Buffer[networkName]);
-    console.log("BetAmount: %s", parseEther(config.MinParticipateAmount[networkName].toString()).toString());
+    console.log("MinParticipateAmount: %s", config.MinParticipateAmount[networkName].toString());
     console.log("OracleUpdateAllowance: %s", config.OracleUpdateAllowance[networkName]);
     console.log("CommissionFee: %s", config.CommissionFee[networkName]);
     console.log("OperateRate: %s", config.OperateRate[networkName]);
@@ -56,7 +60,7 @@ const main = async () => {
       config.Address.ParticipantVault[networkName],
       config.Block.Interval[networkName],
       config.Block.Buffer[networkName],
-      parseEther(config.MinParticipateAmount[networkName].toString()).toString(),
+      config.MinParticipateAmount[networkName].toString(),
       config.OracleUpdateAllowance[networkName],
       config.CommissionFee[networkName],
       config.OperateRate[networkName],
@@ -77,7 +81,7 @@ const main = async () => {
         config.Address.ParticipantVault[networkName],
         config.Block.Interval[networkName],
         config.Block.Buffer[networkName],
-        parseEther(config.MinParticipateAmount[networkName].toString()).toString(),
+        config.MinParticipateAmount[networkName].toString(),
         config.OracleUpdateAllowance[networkName],
         config.CommissionFee[networkName],
         config.OperateRate[networkName],

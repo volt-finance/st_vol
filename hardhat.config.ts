@@ -42,6 +42,24 @@ export default {
       saveDeployments: true,
       chainId: 1,
     },
+    arbitrum: {
+      url: `https://arbitrum-mainnet.infura.io/v3/${infuraKey}`,
+      gas: 22000000,
+      allowUnlimitedContractSize: true,
+      accounts: {
+        mnemonic,
+      },
+      chainId: 42161,
+    },
+    arbitrum_goerli: {
+      url: `https://arbitrum-goerli.infura.io/v3/${infuraKey}`,
+      gas: 22000000,
+      allowUnlimitedContractSize: true,
+      accounts: {
+        mnemonic,
+      },
+      chainId: 421613,
+    },
     goerli: {
       url: `https://goerli.infura.io/v3/${infuraKey}`,
       gas: 22000000,
@@ -72,7 +90,9 @@ export default {
   etherscan: {
     apiKey: {
       mainnet: etherscanKey,
-      goerli: etherscanKey
+      goerli: etherscanKey,
+      arbitrum: etherscanKey,
+      arbitrumGoerli: etherscanKey,
     }
   },
   abiExporter: {
