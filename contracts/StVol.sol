@@ -89,7 +89,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 indexed epoch,
         uint256 amount
     );
-    event Claim(address indexed sender, uint256 indexed epoch, uint256 amount);
+    event Claim(address indexed sender, uint256 indexed epoch, Position position, uint256 amount);
     event EndRound(
         uint256 indexed epoch,
         uint256 indexed roundId,
@@ -324,7 +324,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         ledger[epoch][position][msg.sender].claimed = true;
         reward += addedReward;
 
-        emit Claim(msg.sender, epoch, addedReward);
+        emit Claim(msg.sender, epoch, position, addedReward);
 
         if (reward > 0) {
             token.safeTransfer(msg.sender, reward);

@@ -12,6 +12,12 @@ export default {
       arbitrum_goerli: "0x62CAe0FA2da220f43a51F86Db2EDb36DcA9A5A08", // ETH/USD
       goerli: "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e",
     },
+    Pyth: {
+      mainnet: "",
+      arbitrum: "", // ETH/USD
+      arbitrum_goerli: "", // ETH/USD
+      goerli: "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e",
+    },
     Admin: {
       mainnet: "",
       arbitrum: "",
