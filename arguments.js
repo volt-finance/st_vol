@@ -1,6 +1,7 @@
 // for goerli
 const usdc = '0x456f6b7b1c5126060fe358fb4a5f935b3fbc26ef';
-const oracle = '0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e';
+// const oracle = '0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e'; // ETH/USD
+const oracle = '0x779877A7B0D9E8603169DdbD7836e478b4624789'; // BTC/USD
 const admin = '0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0';
 const operator = '0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0';
 const participantVault = '0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0';

@@ -10,7 +10,8 @@ export default {
       mainnet: "",
       arbitrum: "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612", // ETH/USD
       arbitrum_goerli: "0x62CAe0FA2da220f43a51F86Db2EDb36DcA9A5A08", // ETH/USD
-      goerli: "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e",
+      // goerli: "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e", // ETH/USD
+      goerli: "0x779877A7B0D9E8603169DdbD7836e478b4624789", // BTC/USD
     },
     Pyth: {
       mainnet: "",
