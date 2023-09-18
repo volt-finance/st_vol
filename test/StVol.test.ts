@@ -23,8 +23,8 @@ const INITIAL_PARTICIPATE_RATE = 0.7; // 70%
 
 // Enum: 0 = Over, 1 = Under
 const Position = {
-  Over: 0,
-  Under: 1,
+  Over: "0",
+  Under: "1",
 };
 
 const calcGasCost = (gasUsed: number) => new BN(GAS_PRICE * gasUsed);
@@ -656,12 +656,12 @@ contract(
       let tx = await stVol.claim(1, Position.Over, { from: overUser1 }); // Success
       let { gasUsed } = tx.receipt;
 
-      expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("1"), amount: ether("2.306666666666666666") }); // 2.2 = (1 * 6.92) / 3
+      expectEvent(tx, "Claim", { sender: overUser1, epoch: new BN("1"), position: Position.Over, amount: ether("2.306666666666666666") }); // 2.2 = (1 * 6.92) / 3
 
       tx = await stVol.claim(1, Position.Over, { from: overUser2 }); // Success
       gasUsed = tx.receipt.gasUsed;
 
-      expectEvent(tx, "Claim", { sender: overUser2, epoch: new BN("1"), amount: ether("4.613333333333333333") }); // 4.613333333333333333 = (2 * 6.92) / 3
+      expectEvent(tx, "Claim", { sender: overUser2, epoch: new BN("1"), position: Position.Over, amount: ether("4.613333333333333333") }); // 4.613333333333333333 = (2 * 6.92) / 3
 
       await expectRevert(stVol.claim(1, Position.Under, { from: underUser1 }), "Not eligible for claim");
       await expectRevert(stVol.claim(2, Position.Over, { from: overUser1 }), "Round has not ended");
@@ -685,7 +685,7 @@ contract(
 
       tx = await stVol.claim(2, Position.Under, { from: underUser1 }); // Success
       gasUsed = tx.receipt.gasUsed;
-      expectEvent(tx, "Claim", { sender: underUser1, epoch: new BN("2"), amount: ether("66.140000000000000000") }); // 24 = (24 * 66.14) / 24
+      expectEvent(tx, "Claim", { sender: underUser1, epoch: new BN("2"), position: Position.Under, amount: ether("66.140000000000000000") }); // 24 = (24 * 66.14) / 24
 
       await expectRevert(stVol.claim(1, Position.Over, { from: overUser1 }), "Not eligible for claim");
       await expectRevert(stVol.claim(1, Position.Over, { from: overUser2 }), "Not eligible for claim");

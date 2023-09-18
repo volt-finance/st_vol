@@ -7,23 +7,25 @@ import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
+import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
 
 /**
- * @title StVol
+ * @title StVolV2
  */
 import "hardhat/console.sol";
 
-contract StVol is Ownable, Pausable, ReentrancyGuard {
+contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable token; // Prediction token
 
-    AggregatorV3Interface public oracle;
+    IPyth public oracle;
 
     bool public genesisOpenOnce = false;
     bool public genesisStartOnce = false;
 
+    bytes32 public priceId; // address of the pyth price
     address public adminAddress; // address of the admin
     address public operatorAddress; // address of the operator
     address public keeperAddress; // address of the keeper
@@ -39,9 +41,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     uint256 public participantRate; // participant distribute rate (e.g. 200 = 2%, 150 = 1.50%)
 
     uint256 public currentEpoch; // current epoch for round
-
-    uint256 public oracleLatestRoundId; // converted from uint80 (Chainlink)
-    uint256 public oracleUpdateAllowance; // seconds
 
     uint256 public constant BASE = 10000; // 100%
     uint256 public constant MAX_COMMISSION_FEE = 200; // 2%
@@ -92,12 +91,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     event Claim(address indexed sender, uint256 indexed epoch, Position position, uint256 amount);
     event EndRound(
         uint256 indexed epoch,
-        uint256 indexed roundId,
         int256 price
     );
     event StartRound(
         uint256 indexed epoch,
-        uint256 indexed roundId,
         int256 price
     );
 
@@ -114,7 +111,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     event NewDistributeRate(uint256 operateRate, uint256 participantRate);
     event NewOperatorAddress(address operator);
     event NewOracle(address oracle);
-    event NewOracleUpdateAllowance(uint256 oracleUpdateAllowance);
     event NewKeeperAddress(address operator);
     event NewParticipantVaultAddress(address participantVault);
 
@@ -173,10 +169,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @param _intervalSeconds: number of time within an interval
      * @param _bufferSeconds: buffer of time for resolution of price
      * @param _minParticipateAmount: minimum participate amounts (in wei)
-     * @param _oracleUpdateAllowance: oracle update allowance
      * @param _commissionfee: commission fee (1000 = 10%)
      * @param _operateRate: operate rate (3000 = 30%)
      * @param _participantRate: participant rate (7000 = 70%)
+     * @param _priceId: pyth price address
      */
     constructor(
         IERC20 _token,
@@ -187,10 +183,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 _intervalSeconds,
         uint256 _bufferSeconds,
         uint256 _minParticipateAmount,
-        uint256 _oracleUpdateAllowance,
         uint256 _commissionfee,
         uint256 _operateRate,
-        uint256 _participantRate
+        uint256 _participantRate,
+        bytes32 _priceId
     ) {
         require(
             _commissionfee <= MAX_COMMISSION_FEE,
@@ -202,17 +198,17 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         );
 
         token = _token;
-        oracle = AggregatorV3Interface(_oracleAddress);
+        oracle = IPyth(_oracleAddress);
         adminAddress = _adminAddress;
         operatorAddress = _operatorAddress;
         participantVaultAddress = _participantVaultAddress;
         intervalSeconds = _intervalSeconds;
         bufferSeconds = _bufferSeconds;
         minParticipateAmount = _minParticipateAmount;
-        oracleUpdateAllowance = _oracleUpdateAllowance;
         commissionfee = _commissionfee;
         operateRate = _operateRate;
         participantRate = _participantRate;
+        priceId = _priceId;
     }
 
     /**
@@ -335,19 +331,19 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @notice Open the next round n, lock price for round n-1, end round n-2
      * @dev Callable by operator
      */
-    function executeRound() external whenNotPaused onlyKeeperOrOperator {
+    function executeRound(bytes[] calldata priceUpdateData) external payable whenNotPaused onlyKeeperOrOperator {
         require(
             genesisOpenOnce && genesisStartOnce,
             "Can only run after genesisOpenRound and genesisStartRound is triggered"
         );
 
-        (uint80 currentRoundId, int256 currentPrice) = _getPriceFromOracle();
-
-        oracleLatestRoundId = uint256(currentRoundId);
+        uint fee = oracle.getUpdateFee(priceUpdateData);
+        oracle.updatePriceFeeds{ value: fee }(priceUpdateData);
+        PythStructs.Price memory pythPrice = oracle.getPrice(priceId);
 
         // CurrentEpoch refers to previous round (n-1)
-        _safeStartRound(currentEpoch, currentRoundId, currentPrice);
-        _safeEndRound(currentEpoch - 1, currentRoundId, currentPrice);
+        _safeStartRound(currentEpoch, pythPrice.price);
+        _safeEndRound(currentEpoch - 1, pythPrice.price);
         _calculateRewards(currentEpoch - 1);
 
         // Increment currentEpoch to current round (n)
@@ -359,18 +355,18 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @notice Start genesis round
      * @dev Callable by operator
      */
-    function genesisStartRound() external whenNotPaused onlyKeeperOrOperator {
+    function genesisStartRound(bytes[] calldata priceUpdateData) external payable whenNotPaused onlyKeeperOrOperator {
         require(
             genesisOpenOnce,
             "Can only run after genesisOpenRound is triggered"
         );
         require(!genesisStartOnce, "Can only run genesisStartRound once");
 
-        (uint80 currentRoundId, int256 currentPrice) = _getPriceFromOracle();
+        uint fee = oracle.getUpdateFee(priceUpdateData);
+        oracle.updatePriceFeeds{ value: fee }(priceUpdateData);
+        PythStructs.Price memory pythPrice = oracle.getPrice(priceId);
 
-        oracleLatestRoundId = uint256(currentRoundId);
-
-        _safeStartRound(currentEpoch, currentRoundId, currentPrice);
+        _safeStartRound(currentEpoch, pythPrice.price);
 
         currentEpoch = currentEpoch + 1;
         _openRound(currentEpoch);
@@ -502,26 +498,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      */
     function setOracle(address _oracle) external whenPaused onlyAdmin {
         require(_oracle != address(0), "Cannot be zero address");
-        oracleLatestRoundId = 0;
-        oracle = AggregatorV3Interface(_oracle);
-
-        // Dummy check to make sure the interface implements this function properly
-        oracle.latestRoundData();
+        oracle = IPyth(_oracle);
 
         emit NewOracle(_oracle);
     }
 
-    /**
-     * @notice Set oracle update allowance
-     * @dev Callable by admin
-     */
-    function setOracleUpdateAllowance(
-        uint256 _oracleUpdateAllowance
-    ) external whenPaused onlyAdmin {
-        oracleUpdateAllowance = _oracleUpdateAllowance;
-
-        emit NewOracleUpdateAllowance(_oracleUpdateAllowance);
-    }
 
     /**
      * @notice Set treasury fee
@@ -740,12 +721,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     /**
      * @notice End round
      * @param epoch: epoch
-     * @param roundId: roundId
      * @param price: price of the round
      */
     function _safeEndRound(
         uint256 epoch,
-        uint256 roundId,
         int256 price
     ) internal {
         require(
@@ -762,21 +741,18 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         );
         Round storage round = rounds[epoch];
         round.closePrice = price;
-        round.closeOracleId = roundId;
         round.oracleCalled = true;
 
-        emit EndRound(epoch, roundId, round.closePrice);
+        emit EndRound(epoch, round.closePrice);
     }
 
     /**
      * @notice Start round
      * @param epoch: epoch
-     * @param roundId: roundId
      * @param price: price of the round
      */
     function _safeStartRound(
         uint256 epoch,
-        uint256 roundId,
         int256 price
     ) internal {
         require(
@@ -794,9 +770,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         Round storage round = rounds[epoch];
         round.closeTimestamp = block.timestamp + intervalSeconds;
         round.startPrice = price;
-        round.startOracleId = roundId;
 
-        emit StartRound(epoch, roundId, round.startPrice);
+        emit StartRound(epoch, round.startPrice);
     }
 
     /**
@@ -853,20 +828,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @notice Get latest recorded price from oracle
      * If it falls below allowed buffer or has not updated, it would be invalid.
      */
-    function _getPriceFromOracle() internal view returns (uint80, int256) {
-        uint256 leastAllowedTimestamp = block.timestamp + oracleUpdateAllowance;
-        (uint80 roundId, int256 price, , uint256 timestamp, ) = oracle
-            .latestRoundData();
-        require(
-            timestamp <= leastAllowedTimestamp,
-            "Oracle update exceeded max timestamp allowance"
-        );
-        require(
-            uint256(roundId) > oracleLatestRoundId,
-            "Oracle update roundId must be larger than oracleLatestRoundId"
-        );
-        return (roundId, price);
-    }
+    // function _getPriceFromOracle(bytes[] calldata priceUpdateData) public payable returns (PythStructs.Price memory) {
+    //     uint fee = oracle.getUpdateFee(priceUpdateData);
+    //     oracle.updatePriceFeeds{ value: fee }(priceUpdateData);
+    //     return oracle.getPrice(priceId);
+    // }
 
     /**
      * @notice Returns true if `account` is a contract.
@@ -879,4 +845,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         }
         return size > 0;
     }
+
+    event TestEvent(uint256 data);
 }
