@@ -8,11 +8,17 @@ export default {
     },
     Oracle: {
       mainnet: "",
-      arbitrum: "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612", // ETH/USD
-      arbitrum_goerli: "0x62CAe0FA2da220f43a51F86Db2EDb36DcA9A5A08", // ETH/USD
-      // goerli: "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e", // ETH/USD
-      goerli: "0x779877A7B0D9E8603169DdbD7836e478b4624789", // BTC/USD
+      arbitrum: "",
+      arbitrum_goerli: "",
+      goerli: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C", // PythContractAddress
     },
+    // Oracle: {
+    //   mainnet: "",
+    //   arbitrum: "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612", // ChainLink: ETH/USD
+    //   arbitrum_goerli: "0x62CAe0FA2da220f43a51F86Db2EDb36DcA9A5A08", // ChainLink: ETH/USD
+    //   // goerli: "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e", // ChainLink: ETH/USD
+    //   goerli: "0x779877A7B0D9E8603169DdbD7836e478b4624789", // ChainLink: BTC/USD
+    // },
     Pyth: {
       mainnet: "",
       arbitrum: "", // ETH/USD
@@ -38,18 +44,24 @@ export default {
       goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
     },
   },
+  PythPriceId: {
+    mainnet: "",
+    arbitrum: "",
+    arbitrum_goerli: "",
+    goerli: "0xca80ba6dc32e08d06f1aa886011eed1d77c77be9eb761cc10d72b7d0a2fd57a6", // ETH/USD
+  },
   Block: {
     Interval: {
       mainnet: 300,
-      goerli: 300,
+      goerli: 300, // 5min
       arbitrum: 300,
       arbitrum_goerli: 300
     },
     Buffer: {
-      mainnet: 15,
-      goerli: 15,
-      arbitrum: 15,
-      arbitrum_goerli: 15
+      mainnet: 180,
+      goerli: 180, // 3min
+      arbitrum: 180,
+      arbitrum_goerli: 180
     },
   },
   CommissionFee: {
@@ -75,11 +87,5 @@ export default {
     goerli: 1000000, // 1 USDC
     arbitrum: 1000000, // 1 USDC
     arbitrum_goerli: 1000000, // 1 USDC
-  },
-  OracleUpdateAllowance: {
-    mainnet: 300,
-    goerli: 300,
-    arbitrum: 300,
-    arbitrum_goerli: 300
   },
 };

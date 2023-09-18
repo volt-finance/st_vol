@@ -44,14 +44,13 @@ const main = async () => {
     console.log("Block.Interval: %s", config.Block.Interval[networkName]);
     console.log("Block.Buffer: %s", config.Block.Buffer[networkName]);
     console.log("MinParticipateAmount: %s", config.MinParticipateAmount[networkName].toString());
-    console.log("OracleUpdateAllowance: %s", config.OracleUpdateAllowance[networkName]);
     console.log("CommissionFee: %s", config.CommissionFee[networkName]);
     console.log("OperateRate: %s", config.OperateRate[networkName]);
     console.log("ParticipantRate: %s", config.ParticipantRate[networkName]);
     console.log("===========================================");
 
     // Deploy contracts.
-    const StVol = await ethers.getContractFactory("StVol");
+    const StVol = await ethers.getContractFactory("StVolV2");
     const stVolContract = await StVol.deploy(
       config.Address.Usdc[networkName],
       config.Address.Oracle[networkName],
@@ -61,10 +60,10 @@ const main = async () => {
       config.Block.Interval[networkName],
       config.Block.Buffer[networkName],
       config.MinParticipateAmount[networkName].toString(),
-      config.OracleUpdateAllowance[networkName],
       config.CommissionFee[networkName],
       config.OperateRate[networkName],
-      config.ParticipantRate[networkName]
+      config.ParticipantRate[networkName],
+      config.PythPriceId[networkName],
     );
 
     await stVolContract.deployed();
@@ -82,10 +81,10 @@ const main = async () => {
         config.Block.Interval[networkName],
         config.Block.Buffer[networkName],
         config.MinParticipateAmount[networkName].toString(),
-        config.OracleUpdateAllowance[networkName],
         config.CommissionFee[networkName],
         config.OperateRate[networkName],
-        config.ParticipantRate[networkName]
+        config.ParticipantRate[networkName],
+        config.PythPriceId[networkName]
       ]
     });
     console.log('verify the contractAction done');

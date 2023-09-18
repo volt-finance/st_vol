@@ -14,7 +14,7 @@
     "test": "npx hardhat test",
     "test:coverage": "npx hardhat coverage",
     "test:size-contracts": "npx hardhat size-contracts",
-    "verify:goerli": "npx hardhat verify --constructor-args arguments.js 0x88244576D44062cBE7155e863e2fe41ac9fF9132 --network goerli",
+    "verify:goerli": "npx hardhat verify --constructor-args arguments.js 0xe6f608cfA227A90058c8040ccfCD661D8062b1EA --network goerli",
     "verify:arbitrum-goerli": "npx hardhat verify --constructor-args arguments.js 0xa78E7c49BF3DD6d708aa439FF2B20a4458D40A4C --network arbitrum_goerli"
   },
   "devDependencies": {
