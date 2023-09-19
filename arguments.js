@@ -5,8 +5,8 @@ const oracle = '0xff1a0f4744e8582DF1aE09D5611b887B6a12925C'; // PythContractAddr
 const admin = '0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0';
 const operator = '0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0';
 const participantVault = '0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0';
-const interval = 300;
-const buffer = 180;
+const interval = 3600; // 60*60= 1hour
+const buffer = 900; // 60*15= 15min
 const minParticipantAmount = 1000000;
 const commissionFee = 200;
 const operateRate = 3000;

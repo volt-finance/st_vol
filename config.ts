@@ -52,16 +52,16 @@ export default {
   },
   Block: {
     Interval: {
-      mainnet: 300,
-      goerli: 300, // 5min
-      arbitrum: 300,
-      arbitrum_goerli: 300
+      mainnet: 3600,
+      goerli: 3600, // 1hour
+      arbitrum: 3600,
+      arbitrum_goerli: 3600
     },
     Buffer: {
-      mainnet: 180,
-      goerli: 180, // 3min
-      arbitrum: 180,
-      arbitrum_goerli: 180
+      mainnet: 900,
+      goerli: 900, // 15min
+      arbitrum: 900,
+      arbitrum_goerli: 900
     },
   },
   CommissionFee: {
