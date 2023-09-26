@@ -43,10 +43,10 @@ const main = async () => {
     console.log("ParticipantVolt: %s", config.Address.ParticipantVault[networkName]);
     console.log("Block.Interval: %s", config.Block.Interval[networkName]);
     console.log("Block.Buffer: %s", config.Block.Buffer[networkName]);
-    console.log("MinParticipateAmount: %s", config.MinParticipateAmount[networkName].toString());
     console.log("CommissionFee: %s", config.CommissionFee[networkName]);
     console.log("OperateRate: %s", config.OperateRate[networkName]);
     console.log("ParticipantRate: %s", config.ParticipantRate[networkName]);
+    console.log("StrategyRate: %s", config.StrategyRate[networkName]);
     console.log("===========================================");
 
     // Deploy contracts.
@@ -59,10 +59,10 @@ const main = async () => {
       config.Address.ParticipantVault[networkName],
       config.Block.Interval[networkName],
       config.Block.Buffer[networkName],
-      config.MinParticipateAmount[networkName].toString(),
       config.CommissionFee[networkName],
       config.OperateRate[networkName],
       config.ParticipantRate[networkName],
+      config.StrategyRate[networkName],
       config.PythPriceId[networkName],
     );
 
@@ -80,10 +80,10 @@ const main = async () => {
         config.Address.ParticipantVault[networkName],
         config.Block.Interval[networkName],
         config.Block.Buffer[networkName],
-        config.MinParticipateAmount[networkName].toString(),
         config.CommissionFee[networkName],
         config.OperateRate[networkName],
         config.ParticipantRate[networkName],
+        config.StrategyRate[networkName],
         config.PythPriceId[networkName]
       ]
     });

@@ -39,6 +39,7 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
     uint256 public treasuryAmount; // treasury amount that was not claimed
     uint256 public operateRate; // operate distribute rate (e.g. 200 = 2%, 150 = 1.50%)
     uint256 public participantRate; // participant distribute rate (e.g. 200 = 2%, 150 = 1.50%)
+    int256 public strategyRate; // strategy rate (e.g. 100 = 1%)
 
     uint256 public currentEpoch; // current epoch for round
 
@@ -88,15 +89,14 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
         uint256 indexed epoch,
         uint256 amount
     );
-    event Claim(address indexed sender, uint256 indexed epoch, Position position, uint256 amount);
-    event EndRound(
+    event Claim(
+        address indexed sender,
         uint256 indexed epoch,
-        int256 price
+        Position position,
+        uint256 amount
     );
-    event StartRound(
-        uint256 indexed epoch,
-        int256 price
-    );
+    event EndRound(uint256 indexed epoch, int256 price);
+    event StartRound(uint256 indexed epoch, int256 price);
 
     event NewAdminAddress(address admin);
     event NewBufferAndIntervalSeconds(
@@ -109,6 +109,7 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
     );
     event NewCommissionfee(uint256 indexed epoch, uint256 commissionfee);
     event NewDistributeRate(uint256 operateRate, uint256 participantRate);
+    event NewStrategyRate(int256 strategyRate);
     event NewOperatorAddress(address operator);
     event NewOracle(address oracle);
     event NewKeeperAddress(address operator);
@@ -168,10 +169,10 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
      * @param _participantVaultAddress: participant vault address
      * @param _intervalSeconds: number of time within an interval
      * @param _bufferSeconds: buffer of time for resolution of price
-     * @param _minParticipateAmount: minimum participate amounts (in wei)
      * @param _commissionfee: commission fee (1000 = 10%)
      * @param _operateRate: operate rate (3000 = 30%)
      * @param _participantRate: participant rate (7000 = 70%)
+     * @param _strategyRate: strategy rate (100 = 1%)
      * @param _priceId: pyth price address
      */
     constructor(
@@ -182,10 +183,10 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
         address _participantVaultAddress,
         uint256 _intervalSeconds,
         uint256 _bufferSeconds,
-        uint256 _minParticipateAmount,
         uint256 _commissionfee,
         uint256 _operateRate,
         uint256 _participantRate,
+        int256 _strategyRate,
         bytes32 _priceId
     ) {
         require(
@@ -204,10 +205,11 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
         participantVaultAddress = _participantVaultAddress;
         intervalSeconds = _intervalSeconds;
         bufferSeconds = _bufferSeconds;
-        minParticipateAmount = _minParticipateAmount;
+        minParticipateAmount = 1000000; // 1 USDC
         commissionfee = _commissionfee;
         operateRate = _operateRate;
         participantRate = _participantRate;
+        strategyRate = _strategyRate;
         priceId = _priceId;
     }
 
@@ -287,10 +289,7 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
     ) external nonReentrant notContract {
         uint256 reward; // Initializes reward
 
-        require(
-            rounds[epoch].openTimestamp != 0,
-            "Round has not started"
-        );
+        require(rounds[epoch].openTimestamp != 0, "Round has not started");
         require(
             block.timestamp > rounds[epoch].closeTimestamp,
             "Round has not ended"
@@ -315,12 +314,11 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
                 refundable(epoch, position, msg.sender),
                 "Not eligible for refund"
             );
-            addedReward += ledger[epoch][position][msg.sender].amount;
         }
         ledger[epoch][position][msg.sender].claimed = true;
-        reward += addedReward;
+        reward = ledger[epoch][position][msg.sender].amount + addedReward;
 
-        emit Claim(msg.sender, epoch, position, addedReward);
+        emit Claim(msg.sender, epoch, position, reward);
 
         if (reward > 0) {
             token.safeTransfer(msg.sender, reward);
@@ -331,14 +329,17 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
      * @notice Open the next round n, lock price for round n-1, end round n-2
      * @dev Callable by operator
      */
-    function executeRound(bytes[] calldata priceUpdateData) external payable whenNotPaused onlyKeeperOrOperator {
+    function executeRound(
+        bytes[] calldata priceUpdateData,
+        uint256 initDate
+    ) external payable whenNotPaused onlyKeeperOrOperator {
         require(
             genesisOpenOnce && genesisStartOnce,
             "Can only run after genesisOpenRound and genesisStartRound is triggered"
         );
 
         uint fee = oracle.getUpdateFee(priceUpdateData);
-        oracle.updatePriceFeeds{ value: fee }(priceUpdateData);
+        oracle.updatePriceFeeds{value: fee}(priceUpdateData);
         PythStructs.Price memory pythPrice = oracle.getPrice(priceId);
 
         // CurrentEpoch refers to previous round (n-1)
@@ -348,14 +349,17 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
 
         // Increment currentEpoch to current round (n)
         currentEpoch = currentEpoch + 1;
-        _safeOpenRound(currentEpoch);
+        _safeOpenRound(currentEpoch, initDate);
     }
 
     /**
      * @notice Start genesis round
      * @dev Callable by operator
      */
-    function genesisStartRound(bytes[] calldata priceUpdateData) external payable whenNotPaused onlyKeeperOrOperator {
+    function genesisStartRound(
+        bytes[] calldata priceUpdateData,
+        uint256 initDate
+    ) external payable whenNotPaused onlyKeeperOrOperator {
         require(
             genesisOpenOnce,
             "Can only run after genesisOpenRound is triggered"
@@ -363,13 +367,13 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
         require(!genesisStartOnce, "Can only run genesisStartRound once");
 
         uint fee = oracle.getUpdateFee(priceUpdateData);
-        oracle.updatePriceFeeds{ value: fee }(priceUpdateData);
+        oracle.updatePriceFeeds{value: fee}(priceUpdateData);
         PythStructs.Price memory pythPrice = oracle.getPrice(priceId);
 
         _safeStartRound(currentEpoch, pythPrice.price);
 
         currentEpoch = currentEpoch + 1;
-        _openRound(currentEpoch);
+        _openRound(currentEpoch, initDate);
         genesisStartOnce = true;
     }
 
@@ -377,11 +381,13 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
      * @notice Open genesis round
      * @dev Callable by admin or operator
      */
-    function genesisOpenRound() external whenNotPaused onlyKeeperOrOperator {
+    function genesisOpenRound(
+        uint256 initDate
+    ) external whenNotPaused onlyKeeperOrOperator {
         require(!genesisOpenOnce, "Can only run genesisOpenRound once");
 
         currentEpoch = currentEpoch + 1;
-        _openRound(currentEpoch);
+        _openRound(currentEpoch, initDate);
         genesisOpenOnce = true;
     }
 
@@ -402,10 +408,16 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
     function claimTreasury() external nonReentrant onlyAdmin {
         uint256 currentTreasuryAmount = treasuryAmount;
         treasuryAmount = 0;
-        
+
         // operator 30%, participant vault 70%
-        token.safeTransfer(operatorAddress, (currentTreasuryAmount * operateRate) / BASE);
-        token.safeTransfer(participantVaultAddress, (currentTreasuryAmount * participantRate) / BASE);
+        token.safeTransfer(
+            operatorAddress,
+            (currentTreasuryAmount * operateRate) / BASE
+        );
+        token.safeTransfer(
+            participantVaultAddress,
+            (currentTreasuryAmount * participantRate) / BASE
+        );
 
         emit TreasuryClaim(currentTreasuryAmount);
     }
@@ -503,7 +515,6 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
         emit NewOracle(_oracle);
     }
 
-
     /**
      * @notice Set treasury fee
      * @dev Callable by admin
@@ -537,6 +548,17 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
         participantRate = _participantRate;
 
         emit NewDistributeRate(operateRate, participantRate);
+    }
+
+    function setStrategyRate(
+        int256 _strategyRate
+    ) external whenPaused onlyAdmin {
+        require(
+            strategyRate != _strategyRate,
+            "Must be another strategy rate!"
+        );
+        strategyRate = _strategyRate;
+        emit NewStrategyRate(strategyRate);
     }
 
     /**
@@ -643,13 +665,16 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
             round.oracleCalled &&
             participateInfo.amount != 0 &&
             !participateInfo.claimed &&
-            (
-                (round.closePrice > round.startPrice && participateInfo.position == Position.Over) 
-                ||
-                (round.closePrice < round.startPrice && participateInfo.position == Position.Under)
-                ||
-                (round.closePrice == round.startPrice && (participateInfo.position == Position.Over || participateInfo.position == Position.Under))
-            );
+            ((round.closePrice >
+                round.startPrice + _getStrategyRate(round.startPrice) &&
+                participateInfo.position == Position.Over) ||
+                (round.closePrice <
+                    round.startPrice + _getStrategyRate(round.startPrice) &&
+                    participateInfo.position == Position.Under) ||
+                (round.closePrice ==
+                    round.startPrice + _getStrategyRate(round.startPrice) &&
+                    (participateInfo.position == Position.Over ||
+                        participateInfo.position == Position.Under)));
     }
 
     /**
@@ -687,13 +712,19 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
         uint256 rewardAmount;
 
         // Over wins
-        if (round.closePrice > round.startPrice) {
+        if (
+            round.closePrice >
+            round.startPrice + _getStrategyRate(round.startPrice)
+        ) {
             rewardBaseCalAmount = round.overAmount;
             treasuryAmt = (round.underAmount * commissionfee) / BASE;
             rewardAmount = round.underAmount - treasuryAmt;
         }
         // Under wins
-        else if (round.closePrice < round.startPrice) {
+        else if (
+            round.closePrice <
+            round.startPrice + _getStrategyRate(round.startPrice)
+        ) {
             rewardBaseCalAmount = round.underAmount;
             treasuryAmt = (round.overAmount * commissionfee) / BASE;
             rewardAmount = round.overAmount - treasuryAmt;
@@ -719,14 +750,20 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
+     * @notice Calculate start price applied with strategy Rate
+     * @param price: start price
+     */
+    function _getStrategyRate(int256 price) internal view returns (int256) {
+        if (strategyRate == 0) return 0;
+        return (price * strategyRate) / int256(BASE);
+    }
+
+    /**
      * @notice End round
      * @param epoch: epoch
      * @param price: price of the round
      */
-    function _safeEndRound(
-        uint256 epoch,
-        int256 price
-    ) internal {
+    function _safeEndRound(uint256 epoch, int256 price) internal {
         require(
             rounds[epoch].startTimestamp != 0,
             "Can only end round after round has locked"
@@ -751,10 +788,7 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
      * @param epoch: epoch
      * @param price: price of the round
      */
-    function _safeStartRound(
-        uint256 epoch,
-        int256 price
-    ) internal {
+    function _safeStartRound(uint256 epoch, int256 price) internal {
         require(
             rounds[epoch].openTimestamp != 0,
             "Can only lock round after round has started"
@@ -768,7 +802,6 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
             "Can only start round within bufferSeconds"
         );
         Round storage round = rounds[epoch];
-        round.closeTimestamp = block.timestamp + intervalSeconds;
         round.startPrice = price;
 
         emit StartRound(epoch, round.startPrice);
@@ -778,8 +811,9 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
      * @notice Open round
      * Previous round n-2 must end
      * @param epoch: epoch
+     * @param initDate: initDate
      */
-    function _safeOpenRound(uint256 epoch) internal {
+    function _safeOpenRound(uint256 epoch, uint256 initDate) internal {
         require(
             genesisOpenOnce,
             "Can only run after genesisOpenRound is triggered"
@@ -792,19 +826,29 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
             block.timestamp >= rounds[epoch - 2].closeTimestamp,
             "Can only open new round after round n-2 closeTimestamp"
         );
-        _openRound(epoch);
+        require(
+            block.timestamp >= initDate,
+            "Can only open new round after init date"
+        );
+        _openRound(epoch, initDate);
     }
 
     /**
      * @notice Start round
      * Previous round n-2 must end
      * @param epoch: epoch
+     * @param initDate: initDate
      */
-    function _openRound(uint256 epoch) internal {
+    function _openRound(uint256 epoch, uint256 initDate) internal {
+        require(
+            block.timestamp >= initDate,
+            "Can only open new round after init date"
+        );
+
         Round storage round = rounds[epoch];
-        round.openTimestamp = block.timestamp;
-        round.startTimestamp = block.timestamp + intervalSeconds;
-        round.closeTimestamp = block.timestamp + (2 * intervalSeconds);
+        round.openTimestamp = initDate;
+        round.startTimestamp = initDate + intervalSeconds;
+        round.closeTimestamp = initDate + (2 * intervalSeconds);
         round.epoch = epoch;
         round.totalAmount = 0;
 
@@ -823,16 +867,6 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
             block.timestamp > rounds[epoch].openTimestamp &&
             block.timestamp < rounds[epoch].startTimestamp;
     }
-
-    /**
-     * @notice Get latest recorded price from oracle
-     * If it falls below allowed buffer or has not updated, it would be invalid.
-     */
-    // function _getPriceFromOracle(bytes[] calldata priceUpdateData) public payable returns (PythStructs.Price memory) {
-    //     uint fee = oracle.getUpdateFee(priceUpdateData);
-    //     oracle.updatePriceFeeds{ value: fee }(priceUpdateData);
-    //     return oracle.getPrice(priceId);
-    // }
 
     /**
      * @notice Returns true if `account` is a contract.

@@ -58,10 +58,10 @@ export default {
       arbitrum_goerli: 3600
     },
     Buffer: {
-      mainnet: 900,
-      goerli: 900, // 15min
-      arbitrum: 900,
-      arbitrum_goerli: 900
+      mainnet: 300,
+      goerli: 300, // 5min
+      arbitrum: 300,
+      arbitrum_goerli: 300
     },
   },
   CommissionFee: {
@@ -82,10 +82,10 @@ export default {
     arbitrum: 7000, // 70%
     arbitrum_goerli: 7000 // 70%
   },
-  MinParticipateAmount: {
-    mainnet: 1000000, // 1 USDC
-    goerli: 1000000, // 1 USDC
-    arbitrum: 1000000, // 1 USDC
-    arbitrum_goerli: 1000000, // 1 USDC
+  StrategyRate: {
+    mainnet: 100, // 1%
+    goerli: 100, // 1%
+    arbitrum: 100, // 1%
+    arbitrum_goerli: 100 // 1%
   },
 };
