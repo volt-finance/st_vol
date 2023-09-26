@@ -690,13 +690,13 @@ contract StVolV2 is Ownable, Pausable, ReentrancyGuard {
         if (round.closePrice > round.startPrice) {
             rewardBaseCalAmount = round.overAmount;
             treasuryAmt = (round.underAmount * commissionfee) / BASE;
-            rewardAmount = round.totalAmount - treasuryAmt;
+            rewardAmount = round.underAmount - treasuryAmt;
         }
         // Under wins
         else if (round.closePrice < round.startPrice) {
             rewardBaseCalAmount = round.underAmount;
             treasuryAmt = (round.overAmount * commissionfee) / BASE;
-            rewardAmount = round.totalAmount - treasuryAmt;
+            rewardAmount = round.overAmount - treasuryAmt;
         }
         // No one wins refund participant amount to users
         else {
