@@ -19,12 +19,6 @@ export default {
     //   // goerli: "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e", // ChainLink: ETH/USD
     //   goerli: "0x779877A7B0D9E8603169DdbD7836e478b4624789", // ChainLink: BTC/USD
     // },
-    Pyth: {
-      mainnet: "",
-      arbitrum: "", // ETH/USD
-      arbitrum_goerli: "", // ETH/USD
-      goerli: "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e",
-    },
     Admin: {
       mainnet: "",
       arbitrum: "",
@@ -45,24 +39,22 @@ export default {
     },
   },
   PythPriceId: {
-    mainnet: "",
-    arbitrum: "",
-    arbitrum_goerli: "",
-    goerli: "0xca80ba6dc32e08d06f1aa886011eed1d77c77be9eb761cc10d72b7d0a2fd57a6", // ETH/USD
-  },
-  Block: {
-    Interval: {
-      mainnet: 3600,
-      goerli: 3600, // 1hour
-      arbitrum: 3600,
-      arbitrum_goerli: 3600
+    mainnet: {
+      BTC_USD: "",
+      ETH_USD: "",
     },
-    Buffer: {
-      mainnet: 300,
-      goerli: 300, // 5min
-      arbitrum: 300,
-      arbitrum_goerli: 300
+    arbitrum: {
+      BTC_USD: "",
+      ETH_USD: "",
     },
+    arbitrum_goerli: {
+      BTC_USD: "",
+      ETH_USD: "",
+    },
+    goerli: {
+      BTC_USD: "0xf9c0172ba10dfa4d19088d94f5bf61d3b54d5bd7483a322a982e1373ee8ea31b",
+      ETH_USD: "0xca80ba6dc32e08d06f1aa886011eed1d77c77be9eb761cc10d72b7d0a2fd57a6",
+    }
   },
   CommissionFee: {
     mainnet: 200, // 2%
@@ -81,11 +73,5 @@ export default {
     goerli: 7000, // 70%
     arbitrum: 7000, // 70%
     arbitrum_goerli: 7000 // 70%
-  },
-  StrategyRate: {
-    mainnet: 100, // 1%
-    goerli: 100, // 1%
-    arbitrum: 100, // 1%
-    arbitrum_goerli: 100 // 1%
   },
 };

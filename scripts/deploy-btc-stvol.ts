@@ -1,4 +1,3 @@
-import { parseEther } from "ethers/lib/utils";
 import { ethers, network, run } from "hardhat";
 import config from "../config";
 
@@ -41,33 +40,27 @@ const main = async () => {
     console.log("Admin: %s", config.Address.Admin[networkName]);
     console.log("Operator: %s", config.Address.Operator[networkName]);
     console.log("ParticipantVolt: %s", config.Address.ParticipantVault[networkName]);
-    console.log("Block.Interval: %s", config.Block.Interval[networkName]);
-    console.log("Block.Buffer: %s", config.Block.Buffer[networkName]);
     console.log("CommissionFee: %s", config.CommissionFee[networkName]);
     console.log("OperateRate: %s", config.OperateRate[networkName]);
     console.log("ParticipantRate: %s", config.ParticipantRate[networkName]);
-    console.log("StrategyRate: %s", config.StrategyRate[networkName]);
     console.log("===========================================");
 
     // Deploy contracts.
-    const StVol = await ethers.getContractFactory("StVolV2");
+    const StVol = await ethers.getContractFactory("StVolUpDown");
     const stVolContract = await StVol.deploy(
       config.Address.Usdc[networkName],
       config.Address.Oracle[networkName],
       config.Address.Admin[networkName],
       config.Address.Operator[networkName],
       config.Address.ParticipantVault[networkName],
-      config.Block.Interval[networkName],
-      config.Block.Buffer[networkName],
       config.CommissionFee[networkName],
       config.OperateRate[networkName],
       config.ParticipantRate[networkName],
-      config.StrategyRate[networkName],
-      config.PythPriceId[networkName],
+      config.PythPriceId[networkName]['ETH_USD']
     );
 
     await stVolContract.deployed();
-    console.log(`🍣 StVolContract deployed at ${stVolContract.address}`);
+    console.log(`🍣 StVolUpDownContract deployed at ${stVolContract.address}`);
 
     await run("verify:verify", {
       address: stVolContract.address,
@@ -78,13 +71,10 @@ const main = async () => {
         config.Address.Admin[networkName],
         config.Address.Operator[networkName],
         config.Address.ParticipantVault[networkName],
-        config.Block.Interval[networkName],
-        config.Block.Buffer[networkName],
         config.CommissionFee[networkName],
         config.OperateRate[networkName],
         config.ParticipantRate[networkName],
-        config.StrategyRate[networkName],
-        config.PythPriceId[networkName]
+        config.PythPriceId[networkName]['BTC_USD']
       ]
     });
     console.log('verify the contractAction done');

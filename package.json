@@ -7,14 +7,15 @@
   "private": true,
   "scripts": {
     "compile": "npx hardhat compile",
-    "deploy:goerli": "npx hardhat run --network goerli scripts/deploy.ts",
+    "deploy-eth:goerli": "npx hardhat run --network goerli scripts/deploy-eth-stvol.ts",
+    "deploy-btc:goerli": "npx hardhat run --network goerli scripts/deploy-btc-stvol.ts",
     "deploy:arbitrum-goerli": "npx hardhat run --network arbitrum_goerli scripts/deploy.ts",
     "deploy:arbitrum": "npx hardhat run --network arbitrum scripts/deploy.ts",
     "deploy:mainnet": "npx hardhat run --network mainnet scripts/deploy.ts",
     "test": "npx hardhat test",
     "test:coverage": "npx hardhat coverage",
     "test:size-contracts": "npx hardhat size-contracts",
-    "verify:goerli": "npx hardhat verify --constructor-args arguments.js 0x4917Ea2DB591Ce99CCDeA97DbBC8AEB7df84D976 --network goerli",
+    "verify:goerli": "npx hardhat verify --constructor-args arguments.js --contract \"contracts/StVolUpDown.sol:StVolUpDown\" --network goerli 0xAbF89fcD3207c52164e90daD8ADEbE63DA2A64a7",
     "verify:arbitrum-goerli": "npx hardhat verify --constructor-args arguments.js 0xa78E7c49BF3DD6d708aa439FF2B20a4458D40A4C --network arbitrum_goerli"
   },
   "devDependencies": {
