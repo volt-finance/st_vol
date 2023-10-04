@@ -349,7 +349,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @dev Callable by operator
      */
     function executeRound(
-        bytes[] calldata priceUpdateData,
+        int64 pythPrice,
         uint256 initDate
     ) external payable whenNotPaused onlyKeeperOrOperator {
         require(
@@ -357,13 +357,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             "Can only run after genesisOpenRound and genesisStartRound is triggered"
         );
 
-        uint fee = oracle.getUpdateFee(priceUpdateData);
-        oracle.updatePriceFeeds{value: fee}(priceUpdateData);
-        PythStructs.Price memory pythPrice = oracle.getPrice(priceId);
-
         // CurrentEpoch refers to previous round (n-1)
-        _safeStartRound(currentEpoch, pythPrice.price);
-        _safeEndRound(currentEpoch - 1, pythPrice.price);
+        _safeStartRound(currentEpoch, pythPrice);
+        _safeEndRound(currentEpoch - 1, pythPrice);
         _calculateRewards(currentEpoch - 1);
 
         // Increment currentEpoch to current round (n)
@@ -371,12 +367,18 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         _safeOpenRound(currentEpoch, initDate);
     }
 
+    function executePythPriceUpdate(bytes[] calldata priceUpdateData) external payable whenNotPaused onlyKeeperOrOperator returns (PythStructs.Price memory){
+        uint fee = oracle.getUpdateFee(priceUpdateData);
+        oracle.updatePriceFeeds{value: fee}(priceUpdateData);
+        return oracle.getPrice(priceId);
+    }
+
     /**
      * @notice Start genesis round
      * @dev Callable by operator
      */
     function genesisStartRound(
-        bytes[] calldata priceUpdateData,
+        int64 pythPrice,
         uint256 initDate
     ) external payable whenNotPaused onlyKeeperOrOperator {
         require(
@@ -385,11 +387,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         );
         require(!genesisStartOnce, "Can only run genesisStartRound once");
 
-        uint fee = oracle.getUpdateFee(priceUpdateData);
-        oracle.updatePriceFeeds{value: fee}(priceUpdateData);
-        PythStructs.Price memory pythPrice = oracle.getPrice(priceId);
-
-        _safeStartRound(currentEpoch, pythPrice.price);
+        _safeStartRound(currentEpoch, pythPrice);
 
         currentEpoch = currentEpoch + 1;
         _openRound(currentEpoch, initDate);
@@ -470,19 +468,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         intervalSeconds = _intervalSeconds;
 
         emit NewBufferAndIntervalSeconds(_bufferSeconds, _intervalSeconds);
-    }
-
-    /**
-     * @notice Set minParticipateAmount
-     * @dev Callable by admin
-     */
-    function setMinParticipateAmount(
-        uint256 _minParticipateAmount
-    ) external whenPaused onlyAdmin {
-        require(_minParticipateAmount != 0, "Must be superior to 0");
-        minParticipateAmount = _minParticipateAmount;
-
-        emit NewMinParticipateAmount(currentEpoch, minParticipateAmount);
     }
 
     /**
