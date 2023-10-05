@@ -48,8 +48,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     uint256 public constant MAX_COMMISSION_FEE = 200; // 2%
 
     uint256 public constant DEFAULT_MIN_PARTICIPATE_AMOUNT = 1000000; // 1 USDC
-    uint256 public constant DEFAULT_INTERVAL_SECONDS = 86400; // 60 * 60 * 24(1day)
-    uint256 public constant DEFAULT_BUFFER_SECONDS = 30; // 30(30s)
+    uint256 public constant DEFAULT_INTERVAL_SECONDS = 3600; // 60 * 60 * 1(1hour)
+    uint256 public constant DEFAULT_BUFFER_SECONDS = 600; // 60 * 10 (10min)
 
     mapping(uint256 => mapping(Position => mapping(address => ParticipateInfo)))
         public ledger;
@@ -62,7 +62,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     enum StrategyType {
-        None, Up, Down
+        None,
+        Up,
+        Down
     }
 
     struct Round {
@@ -106,6 +108,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     );
     event EndRound(uint256 indexed epoch, int256 price);
     event StartRound(uint256 indexed epoch, int256 price);
+    event PythPriceInfo(int64 price, uint publishTime);
 
     event NewAdminAddress(address admin);
     event NewBufferAndIntervalSeconds(
@@ -131,7 +134,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 treasuryAmount
     );
 
-    event OpenRound(uint256 indexed epoch, int256 strategyRate, StrategyType strategyType);
+    event OpenRound(
+        uint256 indexed epoch,
+        int256 strategyRate,
+        StrategyType strategyType
+    );
     event TokenRecovery(address indexed token, uint256 amount);
     event TreasuryClaim(uint256 amount);
     event Unpause(uint256 indexed epoch);
@@ -204,14 +211,15 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             "Distribute total rate must be 10000 (100%)"
         );
 
-        if (_strategyRate > 0 ) {
-            require(_strategyType != StrategyType.None,
-            "Strategy Type must be Up or Down" 
+        if (_strategyRate > 0) {
+            require(
+                _strategyType != StrategyType.None,
+                "Strategy Type must be Up or Down"
             );
         } else {
             require(
-            _strategyType == StrategyType.None,
-            "Strategy Type must be None" 
+                _strategyType == StrategyType.None,
+                "Strategy Type must be None"
             );
         }
 
@@ -351,7 +359,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     function executeRound(
         int64 pythPrice,
         uint256 initDate
-    ) external payable whenNotPaused onlyKeeperOrOperator {
+    ) external whenNotPaused onlyKeeperOrOperator {
         require(
             genesisOpenOnce && genesisStartOnce,
             "Can only run after genesisOpenRound and genesisStartRound is triggered"
@@ -367,10 +375,14 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         _safeOpenRound(currentEpoch, initDate);
     }
 
-    function executePythPriceUpdate(bytes[] calldata priceUpdateData) external payable whenNotPaused onlyKeeperOrOperator returns (PythStructs.Price memory){
+    function executePythPriceUpdate(
+        bytes[] calldata priceUpdateData
+    ) external payable whenNotPaused onlyKeeperOrOperator {
         uint fee = oracle.getUpdateFee(priceUpdateData);
         oracle.updatePriceFeeds{value: fee}(priceUpdateData);
-        return oracle.getPrice(priceId);
+        PythStructs.Price memory pythPrice = oracle.getPrice(priceId);
+
+        emit PythPriceInfo(pythPrice.price, pythPrice.publishTime);
     }
 
     /**
@@ -380,7 +392,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     function genesisStartRound(
         int64 pythPrice,
         uint256 initDate
-    ) external payable whenNotPaused onlyKeeperOrOperator {
+    ) external whenNotPaused onlyKeeperOrOperator {
         require(
             genesisOpenOnce,
             "Can only run after genesisOpenRound is triggered"
@@ -702,17 +714,13 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 rewardAmount;
 
         // Over wins
-        if (
-            round.closePrice > _getStrategyRatePrice(round.startPrice)
-        ) {
+        if (round.closePrice > _getStrategyRatePrice(round.startPrice)) {
             rewardBaseCalAmount = round.overAmount;
             treasuryAmt = (round.underAmount * commissionfee) / BASE;
             rewardAmount = round.underAmount - treasuryAmt;
         }
         // Under wins
-        else if (
-            round.closePrice < _getStrategyRatePrice(round.startPrice)
-        ) {
+        else if (round.closePrice < _getStrategyRatePrice(round.startPrice)) {
             rewardBaseCalAmount = round.underAmount;
             treasuryAmt = (round.overAmount * commissionfee) / BASE;
             rewardAmount = round.overAmount - treasuryAmt;
@@ -741,7 +749,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @notice Calculate start price applied with strategy Rate
      * @param price: start price
      */
-    function _getStrategyRatePrice(int256 price) internal view returns (int256) {
+    function _getStrategyRatePrice(
+        int256 price
+    ) internal view returns (int256) {
         if (strategyType == StrategyType.Up) {
             return price + (price * strategyRate) / int256(BASE);
         } else if (strategyType == StrategyType.Down) {

@@ -35,7 +35,7 @@ const main = async () => {
     console.log("Compiled contracts...");
 
     console.log("===========================================");
-    console.log("usdc: %s", config.Address.Usdc[networkName]);
+    console.log("USDC: %s", config.Address.Usdc[networkName]);
     console.log("Oracle: %s", config.Address.Oracle[networkName]);
     console.log("Admin: %s", config.Address.Admin[networkName]);
     console.log("Operator: %s", config.Address.Operator[networkName]);
@@ -46,7 +46,7 @@ const main = async () => {
     console.log("===========================================");
 
     // Deploy contracts.
-    const StVol = await ethers.getContractFactory("StVolUpDown");
+    const StVol = await ethers.getContractFactory("StVol1PerDown");
     const stVolContract = await StVol.deploy(
       config.Address.Usdc[networkName],
       config.Address.Oracle[networkName],
@@ -56,15 +56,16 @@ const main = async () => {
       config.CommissionFee[networkName],
       config.OperateRate[networkName],
       config.ParticipantRate[networkName],
-      config.PythPriceId[networkName]['ETH_USD']
+      config.PythPriceId[networkName]['BTC_USD'],
     );
 
     await stVolContract.deployed();
-    console.log(`🍣 StVolUpDownContract deployed at ${stVolContract.address}`);
+    console.log(`🍣 StVolContract deployed at ${stVolContract.address}`);
 
     await run("verify:verify", {
       address: stVolContract.address,
       network: ethers.provider.network,
+      contract: "contracts/StVol1PerDown.sol:StVol1PerDown",
       constructorArguments: [
         config.Address.Usdc[networkName],
         config.Address.Oracle[networkName],
