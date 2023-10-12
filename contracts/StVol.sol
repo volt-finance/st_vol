@@ -331,10 +331,14 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 "Not eligible for claim"
             );
             Round memory round = rounds[epoch];
-            addedReward +=
-                (ledger[epoch][position][msg.sender].amount *
-                    round.rewardAmount) /
-                round.rewardBaseCalAmount;
+            if ((round.overAmount > 0 && round.underAmount > 0) && (round.startPrice != round.closePrice)) {
+                addedReward +=
+                    (ledger[epoch][position][msg.sender].amount *
+                        round.rewardAmount) /
+                    round.rewardBaseCalAmount;
+            } else {
+                // no winner
+            }
         } else {
             // Round invalid, refund Participate amount
             require(
@@ -713,23 +717,30 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 treasuryAmt;
         uint256 rewardAmount;
 
-        // Over wins
-        if (round.closePrice > _getStrategyRatePrice(round.startPrice)) {
-            rewardBaseCalAmount = round.overAmount;
-            treasuryAmt = (round.underAmount * commissionfee) / BASE;
-            rewardAmount = round.underAmount - treasuryAmt;
-        }
-        // Under wins
-        else if (round.closePrice < _getStrategyRatePrice(round.startPrice)) {
-            rewardBaseCalAmount = round.underAmount;
-            treasuryAmt = (round.overAmount * commissionfee) / BASE;
-            rewardAmount = round.overAmount - treasuryAmt;
-        }
-        // No one wins refund participant amount to users
-        else {
-            rewardBaseCalAmount = round.totalAmount;
-            rewardAmount = round.totalAmount;
-            treasuryAmt = 0;
+        // No participation on the other side refund participant amount to users 
+        if (round.overAmount == 0 || round.underAmount == 0) {
+                rewardBaseCalAmount = 0;
+                rewardAmount = 0;
+                treasuryAmt = 0;
+        } else {
+            // Over wins
+            if (round.closePrice > _getStrategyRatePrice(round.startPrice)) {
+                rewardBaseCalAmount = round.overAmount;
+                treasuryAmt = (round.underAmount * commissionfee) / BASE;
+                rewardAmount = round.underAmount - treasuryAmt;
+            }
+            // Under wins
+            else if (round.closePrice < _getStrategyRatePrice(round.startPrice)) {
+                rewardBaseCalAmount = round.underAmount;
+                treasuryAmt = (round.overAmount * commissionfee) / BASE;
+                rewardAmount = round.overAmount - treasuryAmt;
+            }
+            // No one wins refund participant amount to users
+            else {
+                rewardBaseCalAmount = 0;
+                rewardAmount = 0;
+                treasuryAmt = 0;
+            }
         }
         round.rewardBaseCalAmount = rewardBaseCalAmount;
         round.rewardAmount = rewardAmount;
