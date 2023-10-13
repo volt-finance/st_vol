@@ -10,11 +10,6 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
 
-/**
- * @title StVol
- */
-import "hardhat/console.sol";
-
 contract StVol is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -28,7 +23,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     bytes32 public priceId; // address of the pyth price
     address public adminAddress; // address of the admin
     address public operatorAddress; // address of the operator
-    address public keeperAddress; // address of the keeper
     address public participantVaultAddress; // address of the participant vault
 
     uint256 public bufferSeconds; // number of seconds for valid execution of a participate round
@@ -123,7 +117,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     event NewDistributeRate(uint256 operateRate, uint256 participantRate);
     event NewOperatorAddress(address operator);
     event NewOracle(address oracle);
-    event NewKeeperAddress(address operator);
     event NewParticipantVaultAddress(address participantVault);
 
     event Pause(uint256 indexed epoch);
@@ -148,22 +141,15 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         _;
     }
 
-    modifier onlyAdminOrOperatorOrKeeper() {
+    modifier onlyAdminOrOperator() {
         require(
             msg.sender == adminAddress ||
-                msg.sender == operatorAddress ||
-                msg.sender == keeperAddress,
-            "Not operator/admin/keeper"
+                msg.sender == operatorAddress,
+            "Not operator/admin"
         );
         _;
     }
-    modifier onlyKeeperOrOperator() {
-        require(
-            msg.sender == keeperAddress || msg.sender == operatorAddress,
-            "Not keeper/operator"
-        );
-        _;
-    }
+
     modifier onlyOperator() {
         require(msg.sender == operatorAddress, "Not operator");
         _;
@@ -357,13 +343,28 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
+     * @notice Claim all reward for user
+     */
+    function claimAll() external nonReentrant notContract {
+        _trasferReward(msg.sender);
+    }
+
+    /**
+     * @notice redeem all assets
+     * @dev Callable by admin
+     */
+    function redeemAll(address _user) external whenPaused onlyAdmin {
+        _trasferReward(_user);
+    }
+
+    /**
      * @notice Open the next round n, lock price for round n-1, end round n-2
      * @dev Callable by operator
      */
     function executeRound(
         int64 pythPrice,
         uint256 initDate
-    ) external whenNotPaused onlyKeeperOrOperator {
+    ) external whenNotPaused onlyOperator {
         require(
             genesisOpenOnce && genesisStartOnce,
             "Can only run after genesisOpenRound and genesisStartRound is triggered"
@@ -381,7 +382,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
     function executePythPriceUpdate(
         bytes[] calldata priceUpdateData
-    ) external payable whenNotPaused onlyKeeperOrOperator {
+    ) external payable whenNotPaused onlyOperator {
         uint fee = oracle.getUpdateFee(priceUpdateData);
         oracle.updatePriceFeeds{value: fee}(priceUpdateData);
         PythStructs.Price memory pythPrice = oracle.getPrice(priceId);
@@ -396,7 +397,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     function genesisStartRound(
         int64 pythPrice,
         uint256 initDate
-    ) external whenNotPaused onlyKeeperOrOperator {
+    ) external whenNotPaused onlyOperator {
         require(
             genesisOpenOnce,
             "Can only run after genesisOpenRound is triggered"
@@ -416,7 +417,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      */
     function genesisOpenRound(
         uint256 initDate
-    ) external whenNotPaused onlyKeeperOrOperator {
+    ) external whenNotPaused onlyOperator {
         require(!genesisOpenOnce, "Can only run genesisOpenRound once");
 
         currentEpoch = currentEpoch + 1;
@@ -428,9 +429,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @notice called by the admin to pause, triggers stopped state
      * @dev Callable by admin or operator
      */
-    function pause() external whenNotPaused onlyAdminOrOperatorOrKeeper {
+    function pause() external whenNotPaused onlyAdminOrOperator {
         _pause();
-
         emit Pause(currentEpoch);
     }
 
@@ -458,9 +458,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     /**
      * @notice called by the admin to unpause, returns to normal state
      * Reset genesis state. Once paused, the rounds would need to be kickstarted by genesis
-     * @dev Callable by admin or operator or keeper
+     * @dev Callable by admin or operator 
      */
-    function unpause() external whenPaused onlyAdminOrOperatorOrKeeper {
+    function unpause() external whenPaused onlyAdminOrOperator {
         genesisOpenOnce = false;
         genesisStartOnce = false;
         _unpause();
@@ -493,19 +493,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     function setOperator(address _operatorAddress) external onlyAdmin {
         require(_operatorAddress != address(0), "Cannot be zero address");
         operatorAddress = _operatorAddress;
-
         emit NewOperatorAddress(_operatorAddress);
-    }
-
-    /**
-     * @notice Set keeper address
-     * @dev Callable by admin
-     */
-    function setKeeper(address _keeperAddress) external onlyAdmin {
-        require(_keeperAddress != address(0), "Cannot be zero address");
-        keeperAddress = _keeperAddress;
-
-        emit NewKeeperAddress(_keeperAddress);
     }
 
     /**
@@ -520,7 +508,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             "Cannot be zero address"
         );
         participantVaultAddress = _participantVaultAddress;
-
         emit NewParticipantVaultAddress(_participantVaultAddress);
     }
 
@@ -547,7 +534,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             "Commission fee too high"
         );
         commissionfee = _commissionfee;
-
         emit NewCommissionfee(currentEpoch, commissionfee);
     }
 
@@ -564,23 +550,52 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             "Distribute total rate must be 10000 (100%)"
         );
         operateRate = _operateRate;
-
         participantRate = _participantRate;
-
         emit NewDistributeRate(operateRate, participantRate);
     }
 
-    /**
-     * @notice It allows the owner to recover tokens sent to the contract by mistake
-     * @param _token: token address
-     * @param _amount: token amount
-     * @dev Callable by owner
-     */
-    function recoverToken(address _token, uint256 _amount) external onlyOwner {
-        require(_token != address(token), "Cannot be prediction token address");
-        IERC20(_token).safeTransfer(address(msg.sender), _amount);
+    function _trasferReward(address _user) internal {
+        uint256 reward = 0; // Initializes reward
 
-        emit TokenRecovery(_token, _amount);
+        for (uint256 epoch = 1; epoch <= currentEpoch; epoch++) {
+            if (rounds[epoch].startTimestamp == 0 || (block.timestamp < rounds[epoch].closeTimestamp + bufferSeconds)) continue;
+
+            Round memory round = rounds[epoch];
+            // 0: Over, 1: Under
+            uint8 pst = 0;
+            while(pst <= uint(Position.Under)) {
+                Position position = pst == 0 ? Position.Over : Position.Under;
+                uint256 addedReward = 0;
+
+                // Round vaild, claim rewards
+                if (claimable(epoch, position, _user)) {
+                    if (round.startPrice != round.closePrice) {
+                        addedReward +=
+                            (ledger[epoch][position][_user].amount *
+                                round.rewardAmount) /
+                            round.rewardBaseCalAmount;
+                        addedReward += ledger[epoch][position][_user].amount;
+                    }
+                    addedReward += ledger[epoch][position][_user].amount;
+                } else {
+                    // Round invaild, refund bet amount
+                    if (refundable(epoch, position, _user)) {
+                        addedReward += ledger[epoch][position][_user].amount;
+                    }
+                }
+
+                if (addedReward != 0) {
+                    ledger[epoch][position][_user].claimed = true;
+                    reward += addedReward;
+                    emit Claim(_user, epoch, position, addedReward);
+                }
+                pst++;
+            }
+        }
+
+        if (reward > 0) {
+            token.safeTransfer(_user, reward);
+        }
     }
 
     /**
@@ -593,6 +608,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
         emit NewAdminAddress(_adminAddress);
     }
+
 
     /**
      * @notice Returns round epochs and participate information for a user that has participated
@@ -898,6 +914,5 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         }
         return size > 0;
     }
-
     event TestEvent(uint256 data);
 }
