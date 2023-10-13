@@ -45,7 +45,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     uint256 public currentEpoch; // current epoch for round
 
     uint256 public constant BASE = 10000; // 100%
-    uint256 public constant MAX_COMMISSION_FEE = 200; // 2%
+    uint256 public constant MAX_COMMISSION_FEE = 100; // 1%
 
     uint256 public constant DEFAULT_MIN_PARTICIPATE_AMOUNT = 1000000; // 1 USDC
     uint256 public constant DEFAULT_INTERVAL_SECONDS = 3600; // 60 * 60 * 1(1hour)
@@ -669,18 +669,23 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     ) public view returns (bool) {
         ParticipateInfo memory participateInfo = ledger[epoch][position][user];
         Round memory round = rounds[epoch];
+        
+        bool isPossible = false;
+        if (round.overAmount > 0 && round.underAmount > 0) {
+            isPossible = ((round.closePrice > _getStrategyRatePrice(round.startPrice) &&
+                participateInfo.position == Position.Over) ||
+                (round.closePrice < _getStrategyRatePrice(round.startPrice) &&
+                    participateInfo.position == Position.Under) ||
+                (round.closePrice == _getStrategyRatePrice(round.startPrice)));
+        } else {
+            // refund user's fund if there is no paticipation on the other side
+            isPossible = true;
+        }
 
         return
             round.oracleCalled &&
             participateInfo.amount != 0 &&
-            !participateInfo.claimed &&
-            ((round.closePrice > _getStrategyRatePrice(round.startPrice) &&
-                participateInfo.position == Position.Over) ||
-                (round.closePrice < _getStrategyRatePrice(round.startPrice) &&
-                    participateInfo.position == Position.Under) ||
-                (round.closePrice == _getStrategyRatePrice(round.startPrice) &&
-                    (participateInfo.position == Position.Over ||
-                        participateInfo.position == Position.Under)));
+            !participateInfo.claimed && isPossible;
     }
 
     /**
