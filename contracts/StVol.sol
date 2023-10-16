@@ -569,12 +569,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
                 // Round vaild, claim rewards
                 if (claimable(epoch, position, _user)) {
-                    if (round.startPrice != round.closePrice) {
+                    if ((round.overAmount > 0 && round.underAmount > 0) && (round.startPrice != round.closePrice)) {
                         addedReward +=
                             (ledger[epoch][position][_user].amount *
                                 round.rewardAmount) /
                             round.rewardBaseCalAmount;
-                        addedReward += ledger[epoch][position][_user].amount;
                     }
                     addedReward += ledger[epoch][position][_user].amount;
                 } else {
