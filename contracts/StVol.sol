@@ -23,7 +23,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     bytes32 public priceId; // address of the pyth price
     address public adminAddress; // address of the admin
     address public operatorAddress; // address of the operator
-    address public participantVaultAddress; // address of the participant vault
+    address public operatorVaultAddress; // address of the operator vault
 
     uint256 public bufferSeconds; // number of seconds for valid execution of a participate round
     uint256 public intervalSeconds; // interval in seconds between two participate rounds
@@ -39,7 +39,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     uint256 public currentEpoch; // current epoch for round
 
     uint256 public constant BASE = 10000; // 100%
-    uint256 public constant MAX_COMMISSION_FEE = 100; // 1%
+    uint256 public constant MAX_COMMISSION_FEE = 200; // 2%
 
     uint256 public constant DEFAULT_MIN_PARTICIPATE_AMOUNT = 1000000; // 1 USDC
     uint256 public constant DEFAULT_INTERVAL_SECONDS = 3600; // 60 * 60 * 1(1hour)
@@ -114,10 +114,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 minParticipateAmount
     );
     event NewCommissionfee(uint256 indexed epoch, uint256 commissionfee);
-    event NewDistributeRate(uint256 operateRate, uint256 participantRate);
     event NewOperatorAddress(address operator);
+    event NewOperatorVaultAddress(address operatorVault);
     event NewOracle(address oracle);
-    event NewParticipantVaultAddress(address participantVault);
 
     event Pause(uint256 indexed epoch);
     event RewardsCalculated(
@@ -167,10 +166,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @param _oracleAddress: oracle address
      * @param _adminAddress: admin address
      * @param _operatorAddress: operator address
-     * @param _participantVaultAddress: participant vault address
+     * @param _operatorVaultAddress: operator vault address
      * @param _commissionfee: commission fee (1000 = 10%)
-     * @param _operateRate: operate rate (3000 = 30%)
-     * @param _participantRate: participant rate (7000 = 70%)
+     * @param _operateRate: operate rate (10000 = 100%)
      * @param _strategyRate: strategy rate (100 = 1%)
      * @param _strategyType: strategy type
      * @param _priceId: pyth price address
@@ -180,10 +178,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         address _oracleAddress,
         address _adminAddress,
         address _operatorAddress,
-        address _participantVaultAddress,
+        address _operatorVaultAddress,
         uint256 _commissionfee,
         uint256 _operateRate,
-        uint256 _participantRate,
         int256 _strategyRate,
         StrategyType _strategyType,
         bytes32 _priceId
@@ -192,11 +189,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             _commissionfee <= MAX_COMMISSION_FEE,
             "Commission fee too high"
         );
-        require(
-            _operateRate + _participantRate == BASE,
-            "Distribute total rate must be 10000 (100%)"
-        );
-
         if (_strategyRate > 0) {
             require(
                 _strategyType != StrategyType.None,
@@ -213,10 +205,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         oracle = IPyth(_oracleAddress);
         adminAddress = _adminAddress;
         operatorAddress = _operatorAddress;
-        participantVaultAddress = _participantVaultAddress;
+        operatorVaultAddress = _operatorVaultAddress;
         commissionfee = _commissionfee;
         operateRate = _operateRate;
-        participantRate = _participantRate;
         strategyRate = _strategyRate;
         strategyType = _strategyType;
         priceId = _priceId;
@@ -442,14 +433,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 currentTreasuryAmount = treasuryAmount;
         treasuryAmount = 0;
 
-        // operator 30%, participant vault 70%
+        // operator 100%
         token.safeTransfer(
-            operatorAddress,
+            operatorVaultAddress,
             (currentTreasuryAmount * operateRate) / BASE
-        );
-        token.safeTransfer(
-            participantVaultAddress,
-            (currentTreasuryAmount * participantRate) / BASE
         );
 
         emit TreasuryClaim(currentTreasuryAmount);
@@ -495,20 +482,20 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         operatorAddress = _operatorAddress;
         emit NewOperatorAddress(_operatorAddress);
     }
-
+    
     /**
-     * @notice Set participant vault address
+     * @notice Set operator vault address
      * @dev Callable by admin
      */
-    function setParticipantVault(
-        address _participantVaultAddress
+    function setOperatorVault(
+        address _operatorVaultAddress
     ) external onlyAdmin {
         require(
-            _participantVaultAddress != address(0),
+            _operatorVaultAddress != address(0),
             "Cannot be zero address"
         );
-        participantVaultAddress = _participantVaultAddress;
-        emit NewParticipantVaultAddress(_participantVaultAddress);
+        operatorVaultAddress = _operatorVaultAddress;
+        emit NewOperatorVaultAddress(_operatorVaultAddress);
     }
 
     /**
@@ -535,23 +522,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         );
         commissionfee = _commissionfee;
         emit NewCommissionfee(currentEpoch, commissionfee);
-    }
-
-    /**
-     * @notice Set distribute rate
-     * @dev Callable by admin
-     */
-    function setDistributeRate(
-        uint256 _operateRate,
-        uint256 _participantRate
-    ) external whenPaused onlyAdmin {
-        require(
-            _operateRate + _participantRate == BASE,
-            "Distribute total rate must be 10000 (100%)"
-        );
-        operateRate = _operateRate;
-        participantRate = _participantRate;
-        emit NewDistributeRate(operateRate, participantRate);
     }
 
     function _trasferReward(address _user) internal {

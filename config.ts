@@ -31,12 +31,12 @@ export default {
       arbitrum_goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
       goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
     },
-    ParticipantVault: {
+    OperatorVault: {
       mainnet: "",
       arbitrum: "",
       arbitrum_goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
       goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
-    },
+    }
   },
   PythPriceId: {
     mainnet: {
@@ -57,21 +57,15 @@ export default {
     }
   },
   CommissionFee: {
-    mainnet: 100, // 1%
-    goerli: 100, // 1%
-    arbitrum: 100, // 1%
-    arbitrum_goerli: 100 // 1%
+    mainnet: 200, // 2%
+    goerli: 200, // 2%
+    arbitrum: 200, // 2%
+    arbitrum_goerli: 200 // 2%
   },
   OperateRate: {
-    mainnet: 3000, // 30%
-    goerli: 3000, // 30%
-    arbitrum: 3000, // 30%
-    arbitrum_goerli: 3000 // 30%
-  },
-  ParticipantRate: {
-    mainnet: 7000, // 70%
-    goerli: 7000, // 70%
-    arbitrum: 7000, // 70%
-    arbitrum_goerli: 7000 // 70%
+    mainnet: 10000, // 100%
+    goerli: 10000, // 100%
+    arbitrum: 10000, // 100%
+    arbitrum_goerli: 10000 // 100%
   },
 };

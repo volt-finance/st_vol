@@ -11,10 +11,9 @@ contract StVol1PerDown is StVol {
         address _oracleAddress,
         address _adminAddress,
         address _operatorAddress,
-        address _participantVaultAddress,
+        address _operatorVaultAddress,
         uint256 _commissionfee,
         uint256 _operateRate,
-        uint256 _participantRate,
         bytes32 _priceId
     ) 
     StVol(
@@ -22,10 +21,9 @@ contract StVol1PerDown is StVol {
         _oracleAddress,
         _adminAddress,
         _operatorAddress,
-        _participantVaultAddress,
+        _operatorVaultAddress,
         _commissionfee,
         _operateRate,
-        _participantRate,
         100, // 100: 1%
         StVol.StrategyType.Down,
         _priceId

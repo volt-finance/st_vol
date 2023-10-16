@@ -19,13 +19,13 @@ const main = async () => {
       config.Address.Oracle[networkName] === ethers.constants.AddressZero ||
       config.Address.Admin[networkName] === ethers.constants.AddressZero ||
       config.Address.Operator[networkName] === ethers.constants.AddressZero ||
-      config.Address.ParticipantVault[networkName] === ethers.constants.AddressZero
+      config.Address.OperatorVault[networkName] === ethers.constants.AddressZero 
     ) {
       throw new Error("Missing addresses (Chainlink Oracle and/or Admin/Operator)");
     }
     // Check if the distribute total rate in the config is 10000 
     if (
-      config.OperateRate[networkName] + config.ParticipantRate[networkName] !== 10000
+      config.OperateRate[networkName] !== 10000
     ) {
       throw new Error("Distribute total rate must be 10000 (100%)");
     }
@@ -39,10 +39,9 @@ const main = async () => {
     console.log("Oracle: %s", config.Address.Oracle[networkName]);
     console.log("Admin: %s", config.Address.Admin[networkName]);
     console.log("Operator: %s", config.Address.Operator[networkName]);
-    console.log("ParticipantVolt: %s", config.Address.ParticipantVault[networkName]);
+    console.log("Operator Vault: %s", config.Address.OperatorVault[networkName]);
     console.log("CommissionFee: %s", config.CommissionFee[networkName]);
     console.log("OperateRate: %s", config.OperateRate[networkName]);
-    console.log("ParticipantRate: %s", config.ParticipantRate[networkName]);
     console.log("===========================================");
 
     // Deploy contracts.
@@ -52,10 +51,9 @@ const main = async () => {
       config.Address.Oracle[networkName],
       config.Address.Admin[networkName],
       config.Address.Operator[networkName],
-      config.Address.ParticipantVault[networkName],
+      config.Address.OperatorVault[networkName],
       config.CommissionFee[networkName],
       config.OperateRate[networkName],
-      config.ParticipantRate[networkName],
       config.PythPriceId[networkName]['ETH_USD'],
     );
 
@@ -71,10 +69,9 @@ const main = async () => {
         config.Address.Oracle[networkName],
         config.Address.Admin[networkName],
         config.Address.Operator[networkName],
-        config.Address.ParticipantVault[networkName],
+        config.Address.OperatorVault[networkName],
         config.CommissionFee[networkName],
         config.OperateRate[networkName],
-        config.ParticipantRate[networkName],
         config.PythPriceId[networkName]['ETH_USD']
       ]
     });
