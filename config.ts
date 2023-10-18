@@ -7,7 +7,7 @@ export default {
       goerli: "0x456f6b7b1c5126060fe358fb4a5f935b3fbc26ef",
     },
     Oracle: {
-      mainnet: "",
+      mainnet: "0x4305FB66699C3B2702D4d05CF36551390A4c69C6",
       arbitrum: "",
       arbitrum_goerli: "",
       goerli: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C", // PythContractAddress
@@ -20,19 +20,19 @@ export default {
     //   goerli: "0x779877A7B0D9E8603169DdbD7836e478b4624789", // ChainLink: BTC/USD
     // },
     Admin: {
-      mainnet: "",
+      mainnet: "0x93072915E6fD257Ca98eD80343D6fbc8e2426C9F",
       arbitrum: "",
       arbitrum_goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
       goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
     },
     Operator: {
-      mainnet: "",
+      mainnet: "0x5e6c12e083B1Ad5fB7c7bf5582467EB74cD58a66",
       arbitrum: "",
       arbitrum_goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
       goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
     },
     OperatorVault: {
-      mainnet: "",
+      mainnet: "0xFb6B24942a19F138EF468EC39Ce8653A87500832",
       arbitrum: "",
       arbitrum_goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
       goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
@@ -40,8 +40,8 @@ export default {
   },
   PythPriceId: {
     mainnet: {
-      BTC_USD: "",
-      ETH_USD: "",
+      BTC_USD: "0xc96458d393fe9deb7a7d63a0ac41e2898a67a7750dbd166673279e06c868df0a",
+      ETH_USD: "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
     },
     arbitrum: {
       BTC_USD: "",

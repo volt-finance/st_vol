@@ -42,7 +42,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     uint256 public constant MAX_COMMISSION_FEE = 200; // 2%
 
     uint256 public constant DEFAULT_MIN_PARTICIPATE_AMOUNT = 1000000; // 1 USDC
-    uint256 public constant DEFAULT_INTERVAL_SECONDS = 3600; // 60 * 60 * 1(1hour)
+    uint256 public constant DEFAULT_INTERVAL_SECONDS = 86400; // 24 * 60 * 60 * 1(1day)
     uint256 public constant DEFAULT_BUFFER_SECONDS = 600; // 60 * 10 (10min)
 
     mapping(uint256 => mapping(Position => mapping(address => ParticipateInfo)))
