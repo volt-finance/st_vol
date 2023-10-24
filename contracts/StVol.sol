@@ -957,7 +957,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                     round.totalAmount =
                         round.totalAmount +
                         sortedUnderLimitOrders[underOffset].amount;
-                    round.overAmount =
+                    round.underAmount =
                         round.underAmount +
                         sortedUnderLimitOrders[underOffset].amount;
                     sortedUnderLimitOrders[underOffset]
