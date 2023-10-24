@@ -939,6 +939,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                         sortedOverLimitOrders[overOffset].amount;
                     sortedOverLimitOrders[overOffset].status = LimitOrderStatus
                         .Approve;
+                } else {
+                    continue;
                 }
             }
 
@@ -961,6 +963,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                     sortedUnderLimitOrders[underOffset]
                         .status = LimitOrderStatus.Approve;
                     applyPayout = true;
+                } else {
+                    continue;
                 }
             }
         } while (applyPayout);
