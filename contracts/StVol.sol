@@ -142,8 +142,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
     modifier onlyAdminOrOperator() {
         require(
-            msg.sender == adminAddress ||
-                msg.sender == operatorAddress,
+            msg.sender == adminAddress || msg.sender == operatorAddress,
             "Not operator/admin"
         );
         _;
@@ -308,7 +307,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 "Not eligible for claim"
             );
             Round memory round = rounds[epoch];
-            if ((round.overAmount > 0 && round.underAmount > 0) && (round.startPrice != round.closePrice)) {
+            if (
+                (round.overAmount > 0 && round.underAmount > 0) &&
+                (round.startPrice != round.closePrice)
+            ) {
                 addedReward +=
                     (ledger[epoch][position][msg.sender].amount *
                         round.rewardAmount) /
@@ -445,7 +447,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     /**
      * @notice called by the admin to unpause, returns to normal state
      * Reset genesis state. Once paused, the rounds would need to be kickstarted by genesis
-     * @dev Callable by admin or operator 
+     * @dev Callable by admin or operator
      */
     function unpause() external whenPaused onlyAdminOrOperator {
         genesisOpenOnce = false;
@@ -482,7 +484,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         operatorAddress = _operatorAddress;
         emit NewOperatorAddress(_operatorAddress);
     }
-    
+
     /**
      * @notice Set operator vault address
      * @dev Callable by admin
@@ -490,10 +492,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     function setOperatorVault(
         address _operatorVaultAddress
     ) external onlyAdmin {
-        require(
-            _operatorVaultAddress != address(0),
-            "Cannot be zero address"
-        );
+        require(_operatorVaultAddress != address(0), "Cannot be zero address");
         operatorVaultAddress = _operatorVaultAddress;
         emit NewOperatorVaultAddress(_operatorVaultAddress);
     }
@@ -528,18 +527,24 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 reward = 0; // Initializes reward
 
         for (uint256 epoch = 1; epoch <= currentEpoch; epoch++) {
-            if (rounds[epoch].startTimestamp == 0 || (block.timestamp < rounds[epoch].closeTimestamp + bufferSeconds)) continue;
+            if (
+                rounds[epoch].startTimestamp == 0 ||
+                (block.timestamp < rounds[epoch].closeTimestamp + bufferSeconds)
+            ) continue;
 
             Round memory round = rounds[epoch];
             // 0: Over, 1: Under
             uint8 pst = 0;
-            while(pst <= uint(Position.Under)) {
+            while (pst <= uint(Position.Under)) {
                 Position position = pst == 0 ? Position.Over : Position.Under;
                 uint256 addedReward = 0;
 
                 // Round vaild, claim rewards
                 if (claimable(epoch, position, _user)) {
-                    if ((round.overAmount > 0 && round.underAmount > 0) && (round.startPrice != round.closePrice)) {
+                    if (
+                        (round.overAmount > 0 && round.underAmount > 0) &&
+                        (round.startPrice != round.closePrice)
+                    ) {
                         addedReward +=
                             (ledger[epoch][position][_user].amount *
                                 round.rewardAmount) /
@@ -577,7 +582,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
         emit NewAdminAddress(_adminAddress);
     }
-
 
     /**
      * @notice Returns round epochs and participate information for a user that has participated
@@ -654,10 +658,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     ) public view returns (bool) {
         ParticipateInfo memory participateInfo = ledger[epoch][position][user];
         Round memory round = rounds[epoch];
-        
+
         bool isPossible = false;
         if (round.overAmount > 0 && round.underAmount > 0) {
-            isPossible = ((round.closePrice > _getStrategyRatePrice(round.startPrice) &&
+            isPossible = ((round.closePrice >
+                _getStrategyRatePrice(round.startPrice) &&
                 participateInfo.position == Position.Over) ||
                 (round.closePrice < _getStrategyRatePrice(round.startPrice) &&
                     participateInfo.position == Position.Under) ||
@@ -670,7 +675,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         return
             round.oracleCalled &&
             participateInfo.amount != 0 &&
-            !participateInfo.claimed && isPossible;
+            !participateInfo.claimed &&
+            isPossible;
     }
 
     /**
@@ -707,11 +713,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 treasuryAmt;
         uint256 rewardAmount;
 
-        // No participation on the other side refund participant amount to users 
+        // No participation on the other side refund participant amount to users
         if (round.overAmount == 0 || round.underAmount == 0) {
-                rewardBaseCalAmount = 0;
-                rewardAmount = 0;
-                treasuryAmt = 0;
+            rewardBaseCalAmount = 0;
+            rewardAmount = 0;
+            treasuryAmt = 0;
         } else {
             // Over wins
             if (round.closePrice > _getStrategyRatePrice(round.startPrice)) {
@@ -720,7 +726,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 rewardAmount = round.underAmount - treasuryAmt;
             }
             // Under wins
-            else if (round.closePrice < _getStrategyRatePrice(round.startPrice)) {
+            else if (
+                round.closePrice < _getStrategyRatePrice(round.startPrice)
+            ) {
                 rewardBaseCalAmount = round.underAmount;
                 treasuryAmt = (round.overAmount * commissionfee) / BASE;
                 rewardAmount = round.overAmount - treasuryAmt;
@@ -883,5 +891,92 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         }
         return size > 0;
     }
-    event TestEvent(uint256 data);
+
+    struct LimitOrder {
+        address user;
+        uint256 payout;
+        uint256 amount;
+        uint256 blockTime;
+        LimitOrderStatus status;
+    }
+
+    enum LimitOrderStatus {
+        Initial,
+        Approve
+    }
+    mapping(uint256 => LimitOrder[]) internal overLimitOrders;
+    mapping(uint256 => LimitOrder[]) internal underLimitOrders;
+
+    function _placeLimitOrders(uint256 epoch) internal {
+        uint8 overOffset = 0;
+        uint8 underOffset = 0;
+
+        Round storage round = rounds[epoch];
+        bool applyPayout = false;
+
+        LimitOrder[] memory sortedOverLimitOrders = _sortByPayout(
+            overLimitOrders[epoch]
+        );
+        LimitOrder[] memory sortedUnderLimitOrders = _sortByPayout(
+            underLimitOrders[epoch]
+        );
+
+        do {
+            // proc over limit orders
+            for (; overOffset < sortedOverLimitOrders.length; overOffset++) {
+                if (
+                    sortedOverLimitOrders[overOffset].payout <
+                    round.totalAmount +
+                        sortedOverLimitOrders[overOffset].amount /
+                        (round.overAmount +
+                            sortedOverLimitOrders[overOffset].amount)
+                ) {
+                    round.totalAmount =
+                        round.totalAmount +
+                        sortedOverLimitOrders[overOffset].amount;
+                    round.overAmount =
+                        round.overAmount +
+                        sortedOverLimitOrders[overOffset].amount;
+                    sortedOverLimitOrders[overOffset].status = LimitOrderStatus
+                        .Approve;
+                }
+            }
+
+            applyPayout = false;
+            // proc under limit orders
+            for (; underOffset < sortedUnderLimitOrders.length; underOffset++) {
+                if (
+                    sortedUnderLimitOrders[underOffset].payout <
+                    round.totalAmount +
+                        sortedUnderLimitOrders[underOffset].amount /
+                        (round.underAmount +
+                            sortedUnderLimitOrders[underOffset].amount)
+                ) {
+                    round.totalAmount =
+                        round.totalAmount +
+                        sortedUnderLimitOrders[underOffset].amount;
+                    round.overAmount =
+                        round.underAmount +
+                        sortedUnderLimitOrders[underOffset].amount;
+                    sortedUnderLimitOrders[underOffset]
+                        .status = LimitOrderStatus.Approve;
+                    applyPayout = true;
+                }
+            }
+        } while (applyPayout);
+    }
+
+    function _sortByPayout(
+        LimitOrder[] memory items
+    ) internal pure returns (LimitOrder[] memory) {
+        for (uint i = 1; i < items.length; i++)
+            for (uint j = 0; j < i; j++)
+                if (items[i].payout > items[j].payout) {
+                    LimitOrder memory x = items[i];
+                    items[i] = items[j];
+                    items[j] = x;
+                }
+
+        return items;
+    }
 }
