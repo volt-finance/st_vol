@@ -455,6 +455,7 @@ describe("IterableOrderedOrderSet", function () {
 });
 
 function encodeOrder(order: Order): string {
+    // 8*4=32bit, 16*4=64bit
     return (
         "0x" +
         order.payout.toHexString().slice(2).padStart(8, "0") +
