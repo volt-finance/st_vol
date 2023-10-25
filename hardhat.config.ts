@@ -1,8 +1,9 @@
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-truffle5";
+import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-etherscan";
 import '@typechain/hardhat';
-import "solidity-coverage"
+import "solidity-coverage";
 import "hardhat-abi-exporter";
 
 import * as fs from 'fs';
