@@ -56,21 +56,21 @@ contract IterableOrderedOrderSetWrapper {
         public
         pure
         returns (
-            address,
             uint32,
-            uint64
+            uint64,
+            address
         )
     {
         return IterableOrderedOrderSet.decodeOrder(value);
     }
 
     function encodeOrder(
-        address user,
         uint32 payout,
-        uint64 amount
+        uint64 amount,
+        address user
     ) public pure returns (bytes32) {
         return
-            IterableOrderedOrderSet.encodeOrder(user, payout, amount);
+            IterableOrderedOrderSet.encodeOrder(payout, amount, user);
     }
 
     function smallerThan(bytes32 orderLeft, bytes32 orderRight)

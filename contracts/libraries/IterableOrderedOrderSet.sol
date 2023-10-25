@@ -52,7 +52,7 @@ library IterableOrderedOrderSet {
         bytes32 elementToInsert,
         bytes32 elementBeforeNewOne
     ) internal returns (bool) {
-        (address user, uint32 payout, uint64 amount) = decodeOrder(elementToInsert);
+        (uint32 payout, uint64 amount, address user) = decodeOrder(elementToInsert);
         
         console.log("user: %s, payout: %s, amount: %s", user, payout, amount);
 
@@ -189,9 +189,9 @@ library IterableOrderedOrderSet {
         internal
         pure
         returns (
-            address user,
             uint32 payout,
-            uint64 amount
+            uint64 amount,
+            address user
         )
     {
         // Note: converting to uint discards the binary digits that do not fit
@@ -202,9 +202,9 @@ library IterableOrderedOrderSet {
     }
 
     function encodeOrder(
-        address user,
         uint32 payout,
-        uint64 amount
+        uint64 amount,
+        address user
     ) internal pure returns (bytes32) {
         return
             bytes32(
