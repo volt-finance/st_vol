@@ -54,7 +54,7 @@ library IterableOrderedOrderSet {
     ) internal returns (bool) {
         (uint32 payout, uint64 amount, address user) = decodeOrder(elementToInsert);
         
-        console.log("user: %s, payout: %s, amount: %s", user, payout, amount);
+        // console.log("user: %s, payout: %s, amount: %s", user, payout, amount);
 
         require(payout != uint96(0), "Inserting zero is not supported");
         require(amount != uint96(0), "Inserting zero is not supported");

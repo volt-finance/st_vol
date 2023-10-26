@@ -43,13 +43,13 @@ const BYTES32_ONE_BEST_AMOUNT = encodeOrder({
 });
 const BYTES32_TWO = encodeOrder({
     user: "0x0000000000000000000000000000000000000000",
-    amount: BigNumber.from(8),
-    payout: BigNumber.from(4)
+    payout: BigNumber.from(3),
+    amount: BigNumber.from(8)
 });
 const BYTES32_THREE = encodeOrder({
     user: "0x0000000000000000000000000000000000000000",
-    amount: BigNumber.from(6),
-    payout: BigNumber.from(2)
+    payout: BigNumber.from(4),
+    amount: BigNumber.from(6)
 });
 const BYTES32_FOUR = encodeOrder({
     user: "0x0000000000000000000000000000000000000000",
@@ -199,7 +199,7 @@ describe("IterableOrderedOrderSet", function () {
         ).to.be.revertedWith("Inserting element is not valid");
     });
 
-    it("should insert element according to rate", async () => {
+    it.only("should insert element according to rate", async () => {
         await set.insert(BYTES32_THREE);
         await set.insert(BYTES32_ONE);
         await set.insert(BYTES32_TWO);
