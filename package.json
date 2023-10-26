@@ -14,6 +14,7 @@
     "deploy:arbitrum-goerli": "npx hardhat run --network arbitrum_goerli scripts/deploy.ts",
     "deploy:arbitrum": "npx hardhat run --network arbitrum scripts/deploy.ts",
     "test": "npx hardhat test",
+    "test:v2": "hardhat test --network hardhat ./test/StVol.test.v2.ts",
     "test:coverage": "npx hardhat coverage",
     "test:size-contracts": "npx hardhat size-contracts",
     "verify:goerli": "npx hardhat verify --constructor-args dev.arguments.js --contract \"contracts/StVolUpDown.sol:StVolUpDown\" --network goerli 0xF687EC4407E4af31D60020C77e43Ccb8d3BE743A",
