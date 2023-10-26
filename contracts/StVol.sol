@@ -1072,17 +1072,17 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                     overLimitOrders[epoch][j].blockTimestamp
                 ) {
                     overLimitOrders[epoch][j].status = LimitOrderStatus.Approve;
-                    console.log(
-                        "[done]over approved: %s, %s, %s",
-                        sortedOverLimitOrders[i].user,
-                        overLimitOrders[epoch][j].amount,
-                        overLimitOrders[epoch][j].payout
-                    );
                     _participate(
                         epoch,
                         Position.Over,
                         sortedOverLimitOrders[i].user,
                         sortedOverLimitOrders[i].amount
+                    );
+                    console.log(
+                        "[done]over approved: %s, %s, %s",
+                        sortedOverLimitOrders[i].user,
+                        overLimitOrders[epoch][j].amount,
+                        overLimitOrders[epoch][j].payout
                     );
                     break;
                 }
