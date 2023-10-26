@@ -1073,7 +1073,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 ) {
                     overLimitOrders[epoch][j].status = LimitOrderStatus.Approve;
                     console.log(
-                        "[done]over limit: %s, %s, %s",
+                        "[done]over approved: %s, %s, %s",
                         sortedOverLimitOrders[i].user,
                         overLimitOrders[epoch][j].amount,
                         overLimitOrders[epoch][j].payout
@@ -1095,7 +1095,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                     underLimitOrders[epoch][j].status = LimitOrderStatus
                         .Approve;
                     console.log(
-                        "[done]under limit: %s, %s, %s",
+                        "[done]under approved: %s, %s, %s",
                         sortedUnderLimitOrders[i].user,
                         underLimitOrders[epoch][j].amount,
                         underLimitOrders[epoch][j].payout
