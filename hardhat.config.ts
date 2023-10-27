@@ -5,6 +5,7 @@ import "@nomiclabs/hardhat-etherscan";
 import '@typechain/hardhat';
 import "solidity-coverage";
 import "hardhat-abi-exporter";
+import "hardhat-gas-reporter";
 
 import * as fs from 'fs';
 import * as dotenv from 'dotenv'

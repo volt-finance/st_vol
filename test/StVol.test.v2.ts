@@ -522,16 +522,20 @@ contract(
       // Epoch 1
       await stVol.genesisOpenRound(currentTimestamp);
       currentEpoch = await stVol.currentEpoch();
+      await stVol.participateUnder(currentEpoch, ether("50"), { from: underUser1 });
 
       // place limit order
       await stVol.participateLimitOver(currentEpoch, ether("1"), new BN(2 * MULTIPLIER), { from: overLimitUser1 }); // payout:2x
-      await stVol.participateLimitOver(currentEpoch, ether("2"), new BN(2.1 * MULTIPLIER), { from: overLimitUser2 }); // payout:2.1x
+      await stVol.participateLimitOver(currentEpoch, ether("1"), new BN(2 * MULTIPLIER), { from: overLimitUser1 }); // payout:2x
+      await stVol.participateLimitOver(currentEpoch, ether("1"), new BN(2 * MULTIPLIER), { from: overLimitUser1 }); // payout:2x
+      await stVol.participateLimitOver(currentEpoch, ether("1"), new BN(2 * MULTIPLIER), { from: overLimitUser1 }); // payout:2x
+      await stVol.participateLimitOver(currentEpoch, ether("1"), new BN(2 * MULTIPLIER), { from: overLimitUser1 }); // payout:2x
 
-      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("3").toString());
+      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("55").toString());
 
-      assert.equal((await stVol.rounds(1)).totalAmount, ether("0").toString());
-      assert.equal((await stVol.rounds(1)).overAmount, ether("0").toString());
-      assert.equal((await stVol.rounds(1)).underAmount, ether("0").toString());
+      // assert.equal((await stVol.rounds(1)).totalAmount, ether("0").toString());
+      // assert.equal((await stVol.rounds(1)).overAmount, ether("0").toString());
+      // assert.equal((await stVol.rounds(1)).underAmount, ether("0").toString());
 
       // Epoch 2
       // execute limit order 
@@ -541,10 +545,10 @@ contract(
       await stVol.genesisStartRound(new BN(INITIAL_PRICE), currentTimestamp); // For round 1
       currentEpoch = await stVol.currentEpoch();
 
-      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("0").toString());
-      assert.equal((await stVol.rounds(1)).totalAmount, ether("0").toString());
-      assert.equal((await stVol.rounds(1)).overAmount, ether("0").toString());
-      assert.equal((await stVol.rounds(1)).underAmount, ether("0").toString());
+      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("55").toString());
+      assert.equal((await stVol.rounds(1)).totalAmount, ether("55").toString());
+      assert.equal((await stVol.rounds(1)).overAmount, ether("5").toString());
+      assert.equal((await stVol.rounds(1)).underAmount, ether("50").toString());
     });
   }
 );

@@ -55,7 +55,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     enum LimitOrderStatus {
-        Initial,
+        Undeclared,
         Approve
     }
 
@@ -99,6 +99,12 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         Position position;
         uint256 amount;
         bool claimed; // default false
+    }
+
+    struct RoundAmount {
+        uint256 totalAmount;
+        uint256 overAmount;
+        uint256 underAmount;
     }
 
     event ParticipateUnder(
@@ -946,7 +952,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 _payout,
                 _amount,
                 block.timestamp,
-                LimitOrderStatus.Initial
+                LimitOrderStatus.Undeclared
             )
         );
         emit ParticipateLimitOver(msg.sender, epoch, _amount, _payout);
@@ -976,17 +982,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 _payout,
                 _amount,
                 block.timestamp,
-                LimitOrderStatus.Initial
+                LimitOrderStatus.Undeclared
             )
         );
 
         emit ParticipateLimitUnder(msg.sender, epoch, _amount, _payout);
-    }
-
-    struct RoundAmount {
-        uint256 totalAmount;
-        uint256 overAmount;
-        uint256 underAmount;
     }
 
     function _placeLimitOrders(uint256 epoch) internal {
@@ -1068,7 +1068,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         } while (applyPayout);
 
         for (uint i = 0; i < sortedOverLimitOrders.length; i++) {
-            if (sortedOverLimitOrders[i].status == LimitOrderStatus.Initial) {
+            if (sortedOverLimitOrders[i].status == LimitOrderStatus.Undeclared) {
                 // refund participate amount to user
                 token.safeTransfer(sortedOverLimitOrders[i].user, sortedOverLimitOrders[i].amount);
                 console.log("[OL][refund]%s, %s", sortedOverLimitOrders[i].user, sortedOverLimitOrders[i].amount);
@@ -1100,7 +1100,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             }
         }
         for (uint i = 0; i < sortedUnderLimitOrders.length; i++) {
-            if (sortedUnderLimitOrders[i].status == LimitOrderStatus.Initial) {
+            if (sortedUnderLimitOrders[i].status == LimitOrderStatus.Undeclared) {
                 // refund participate amount to user
                 token.safeTransfer(sortedUnderLimitOrders[i].user, sortedUnderLimitOrders[i].amount);
                 console.log("[UL][refund]%s, %s", sortedUnderLimitOrders[i].user, sortedUnderLimitOrders[i].amount);
