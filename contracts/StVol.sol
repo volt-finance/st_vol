@@ -936,7 +936,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             _amount >= minParticipateAmount,
             "Participate amount must be greater than minParticipateAmount"
         );
-        require(_payout > 0, "Participate payout must be greater than zero");
+        require(_payout > BASE, "Participate payout must be greater than zero");
         token.safeTransferFrom(msg.sender, address(this), _amount);
 
         LimitOrder[] storage limitOrders = overLimitOrders[epoch];
@@ -966,7 +966,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             _amount >= minParticipateAmount,
             "Participate amount must be greater than minParticipateAmount"
         );
-        require(_payout > 0, "Participate payout must be greater than zero");
+        require(_payout > BASE, "Participate payout must be greater than zero");
         token.safeTransferFrom(msg.sender, address(this), _amount);
 
         LimitOrder[] storage limitOrders = underLimitOrders[epoch];

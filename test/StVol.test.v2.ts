@@ -449,7 +449,7 @@ contract(
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("18").toString());
       assert.equal((await mockUsdc.balanceOf(overLimitUser1)).toString(), ether("99").toString());
     });
-    it.only("[5]", async () => {
+    it("[5]", async () => {
       let currentTimestamp = 1704078000;
       await time.increaseTo(currentTimestamp);
 
@@ -514,6 +514,37 @@ contract(
       assert.equal((await stVol.rounds(2)).totalAmount, ether("4").toString());
       assert.equal((await stVol.rounds(2)).overAmount, ether("2").toString());
       assert.equal((await stVol.rounds(2)).underAmount, ether("2").toString());
+    });
+    it.only("[6]", async () => {
+      let currentTimestamp = 1704078000;
+      await time.increaseTo(currentTimestamp);
+
+      // Epoch 1
+      await stVol.genesisOpenRound(currentTimestamp);
+      currentEpoch = await stVol.currentEpoch();
+
+      // place limit order
+      await stVol.participateLimitOver(currentEpoch, ether("1"), new BN(2 * MULTIPLIER), { from: overLimitUser1 }); // payout:2x
+      await stVol.participateLimitOver(currentEpoch, ether("2"), new BN(2.1 * MULTIPLIER), { from: overLimitUser2 }); // payout:2.1x
+
+      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("3").toString());
+
+      assert.equal((await stVol.rounds(1)).totalAmount, ether("0").toString());
+      assert.equal((await stVol.rounds(1)).overAmount, ether("0").toString());
+      assert.equal((await stVol.rounds(1)).underAmount, ether("0").toString());
+
+      // Epoch 2
+      // execute limit order 
+      currentTimestamp += INTERVAL_SECONDS;
+      await time.increaseTo(currentTimestamp);
+
+      await stVol.genesisStartRound(new BN(INITIAL_PRICE), currentTimestamp); // For round 1
+      currentEpoch = await stVol.currentEpoch();
+
+      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("0").toString());
+      assert.equal((await stVol.rounds(1)).totalAmount, ether("0").toString());
+      assert.equal((await stVol.rounds(1)).overAmount, ether("0").toString());
+      assert.equal((await stVol.rounds(1)).underAmount, ether("0").toString());
     });
   }
 );
