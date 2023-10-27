@@ -9,6 +9,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
+import "hardhat/console.sol";
 
 contract StVol is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -44,6 +45,22 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     uint256 public constant DEFAULT_MIN_PARTICIPATE_AMOUNT = 1000000; // 1 USDC
     uint256 public constant DEFAULT_INTERVAL_SECONDS = 86400; // 24 * 60 * 60 * 1(1day)
     uint256 public constant DEFAULT_BUFFER_SECONDS = 600; // 60 * 10 (10min)
+
+    struct LimitOrder {
+        address user;
+        uint256 payout;
+        uint256 amount;
+        uint256 blockTimestamp;
+        LimitOrderStatus status;
+    }
+
+    enum LimitOrderStatus {
+        Initial,
+        Approve
+    }
+
+    mapping(uint256 => LimitOrder[]) public overLimitOrders;
+    mapping(uint256 => LimitOrder[]) public underLimitOrders;
 
     mapping(uint256 => mapping(Position => mapping(address => ParticipateInfo)))
         public ledger;
@@ -93,6 +110,18 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         address indexed sender,
         uint256 indexed epoch,
         uint256 amount
+    );
+    event ParticipateLimitOver(
+        address indexed sender,
+        uint256 indexed epoch,
+        uint256 amount,
+        uint256 payout
+    );
+    event ParticipateLimitUnder(
+        address indexed sender,
+        uint256 indexed epoch,
+        uint256 amount,
+        uint256 payout
     );
     event Claim(
         address indexed sender,
@@ -232,21 +261,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         );
 
         token.safeTransferFrom(msg.sender, address(this), _amount);
-        // Update round data
-        uint256 amount = _amount;
-        Round storage round = rounds[epoch];
-        round.totalAmount = round.totalAmount + amount;
-        round.underAmount = round.underAmount + amount;
-
-        // Update user data
-        ParticipateInfo storage participateInfo = ledger[epoch][Position.Under][
-            msg.sender
-        ];
-        participateInfo.position = Position.Under;
-        participateInfo.amount = participateInfo.amount + amount;
-        userRounds[msg.sender].push(epoch);
-
-        emit ParticipateUnder(msg.sender, epoch, amount);
+        _participate(epoch, Position.Under, msg.sender, _amount);
     }
 
     /**
@@ -265,21 +280,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         );
 
         token.safeTransferFrom(msg.sender, address(this), _amount);
-        // Update round data
-        uint256 amount = _amount;
-        Round storage round = rounds[epoch];
-        round.totalAmount = round.totalAmount + amount;
-        round.overAmount = round.overAmount + amount;
-
-        // Update user data
-        ParticipateInfo storage participateInfo = ledger[epoch][Position.Over][
-            msg.sender
-        ];
-        participateInfo.position = Position.Over;
-        participateInfo.amount = participateInfo.amount + amount;
-        userRounds[msg.sender].push(epoch);
-
-        emit ParticipateOver(msg.sender, epoch, amount);
+        _participate(epoch, Position.Over, msg.sender, _amount);
     }
 
     /**
@@ -365,6 +366,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
         // CurrentEpoch refers to previous round (n-1)
         _safeStartRound(currentEpoch, pythPrice);
+        _placeLimitOrders(currentEpoch);
         _safeEndRound(currentEpoch - 1, pythPrice);
         _calculateRewards(currentEpoch - 1);
 
@@ -398,6 +400,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         require(!genesisStartOnce, "Can only run genesisStartRound once");
 
         _safeStartRound(currentEpoch, pythPrice);
+        _placeLimitOrders(currentEpoch);
 
         currentEpoch = currentEpoch + 1;
         _openRound(currentEpoch, initDate);
@@ -534,7 +537,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
             Round memory round = rounds[epoch];
             // 0: Over, 1: Under
-            uint8 pst = 0;
+            uint pst = 0;
             while (pst <= uint(Position.Under)) {
                 Position position = pst == 0 ? Position.Over : Position.Under;
                 uint256 addedReward = 0;
@@ -880,6 +883,33 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             block.timestamp < rounds[epoch].startTimestamp;
     }
 
+    function _participate(
+        uint256 epoch,
+        Position _position,
+        address _user,
+        uint256 _amount
+    ) internal {
+        // Update user data
+        ParticipateInfo storage participateInfo = ledger[epoch][_position][
+            _user
+        ];
+
+        participateInfo.position = _position;
+        participateInfo.amount = participateInfo.amount + _amount;
+        userRounds[_user].push(epoch);
+
+        // Update user round data
+        Round storage round = rounds[epoch];
+        round.totalAmount = round.totalAmount + _amount;
+        if (_position == Position.Over) {
+            round.overAmount = round.overAmount + _amount;
+            emit ParticipateOver(msg.sender, epoch, _amount);
+        } else {
+            round.underAmount = round.underAmount + _amount;
+            emit ParticipateUnder(msg.sender, epoch, _amount);
+        }
+    }
+
     /**
      * @notice Returns true if `account` is a contract.
      * @param account: account address
@@ -892,82 +922,215 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         return size > 0;
     }
 
-    struct LimitOrder {
-        address user;
-        uint256 payout;
-        uint256 amount;
-        uint256 blockTime;
-        LimitOrderStatus status;
+    /**
+     * @notice Participate over limit position
+     */
+    function participateLimitOver(
+        uint256 epoch,
+        uint256 _amount,
+        uint256 _payout
+    ) external whenNotPaused nonReentrant notContract {
+        require(epoch == currentEpoch, "Participate is too early/late");
+        require(_participable(epoch), "Round not participable");
+        require(
+            _amount >= minParticipateAmount,
+            "Participate amount must be greater than minParticipateAmount"
+        );
+        require(_payout > 0, "Participate payout must be greater than zero");
+        token.safeTransferFrom(msg.sender, address(this), _amount);
+
+        LimitOrder[] storage limitOrders = overLimitOrders[epoch];
+        limitOrders.push(
+            LimitOrder(
+                msg.sender,
+                _payout,
+                _amount,
+                block.timestamp,
+                LimitOrderStatus.Initial
+            )
+        );
+        emit ParticipateLimitOver(msg.sender, epoch, _amount, _payout);
     }
 
-    enum LimitOrderStatus {
-        Initial,
-        Approve
+    /**
+     * @notice Participate under limit position
+     */
+    function participateLimitUnder(
+        uint256 epoch,
+        uint256 _amount,
+        uint256 _payout
+    ) external whenNotPaused nonReentrant notContract {
+        require(epoch == currentEpoch, "Participate is too early/late");
+        require(_participable(epoch), "Round not participable");
+        require(
+            _amount >= minParticipateAmount,
+            "Participate amount must be greater than minParticipateAmount"
+        );
+        require(_payout > 0, "Participate payout must be greater than zero");
+        token.safeTransferFrom(msg.sender, address(this), _amount);
+
+        LimitOrder[] storage limitOrders = underLimitOrders[epoch];
+        limitOrders.push(
+            LimitOrder(
+                msg.sender,
+                _payout,
+                _amount,
+                block.timestamp,
+                LimitOrderStatus.Initial
+            )
+        );
+
+        emit ParticipateLimitUnder(msg.sender, epoch, _amount, _payout);
     }
-    mapping(uint256 => LimitOrder[]) internal overLimitOrders;
-    mapping(uint256 => LimitOrder[]) internal underLimitOrders;
+
+    struct RoundAmount {
+        uint256 totalAmount;
+        uint256 overAmount;
+        uint256 underAmount;
+    }
 
     function _placeLimitOrders(uint256 epoch) internal {
-        uint8 overOffset = 0;
-        uint8 underOffset = 0;
+        uint overOffset = 0;
+        uint underOffset = 0;
 
         Round storage round = rounds[epoch];
-        bool applyPayout = false;
+        RoundAmount memory ra = RoundAmount(round.totalAmount, round.overAmount, round.underAmount);
 
+        bool applyPayout = false;
         LimitOrder[] memory sortedOverLimitOrders = _sortByPayout(
             overLimitOrders[epoch]
         );
         LimitOrder[] memory sortedUnderLimitOrders = _sortByPayout(
             underLimitOrders[epoch]
         );
-
+        
         do {
             // proc over limit orders
             for (; overOffset < sortedOverLimitOrders.length; overOffset++) {
+                uint expectedPayout = ((ra.totalAmount +
+                    sortedOverLimitOrders[overOffset].amount) * BASE) /
+                    (ra.overAmount +
+                        sortedOverLimitOrders[overOffset].amount);
+
+                console.log(
+                    "[OL][0]payout",
+                    sortedOverLimitOrders[overOffset].payout
+                );
+                console.log("[OL][1]expected:", expectedPayout);
                 if (
-                    sortedOverLimitOrders[overOffset].payout <
-                    round.totalAmount +
-                        sortedOverLimitOrders[overOffset].amount /
-                        (round.overAmount +
-                            sortedOverLimitOrders[overOffset].amount)
+                    sortedOverLimitOrders[overOffset].payout <= expectedPayout
                 ) {
-                    round.totalAmount =
-                        round.totalAmount +
+                    console.log("[OL][exec]over limit");
+                    ra.totalAmount =
+                        ra.totalAmount +
                         sortedOverLimitOrders[overOffset].amount;
-                    round.overAmount =
-                        round.overAmount +
+                    ra.overAmount =
+                        ra.overAmount +
                         sortedOverLimitOrders[overOffset].amount;
                     sortedOverLimitOrders[overOffset].status = LimitOrderStatus
                         .Approve;
                 } else {
-                    continue;
+                    break;
                 }
             }
 
             applyPayout = false;
             // proc under limit orders
             for (; underOffset < sortedUnderLimitOrders.length; underOffset++) {
+                uint expectedPayout = ((ra.totalAmount +
+                    sortedUnderLimitOrders[underOffset].amount) * BASE) /
+                    (ra.underAmount +
+                        sortedUnderLimitOrders[underOffset].amount);
+
+                console.log(
+                    "[UL][0]under payout:",
+                    sortedUnderLimitOrders[underOffset].payout
+                );
+                console.log("[UL][1]expected:", expectedPayout);
                 if (
-                    sortedUnderLimitOrders[underOffset].payout <
-                    round.totalAmount +
-                        sortedUnderLimitOrders[underOffset].amount /
-                        (round.underAmount +
-                            sortedUnderLimitOrders[underOffset].amount)
+                    sortedUnderLimitOrders[underOffset].payout <= expectedPayout
                 ) {
-                    round.totalAmount =
-                        round.totalAmount +
+                    console.log("[UL][exec]under limit");
+                    ra.totalAmount =
+                        ra.totalAmount +
                         sortedUnderLimitOrders[underOffset].amount;
-                    round.underAmount =
-                        round.underAmount +
+                    ra.underAmount =
+                        ra.underAmount +
                         sortedUnderLimitOrders[underOffset].amount;
                     sortedUnderLimitOrders[underOffset]
                         .status = LimitOrderStatus.Approve;
                     applyPayout = true;
                 } else {
-                    continue;
+                    break;
                 }
             }
+            console.log("------------------------------------");
         } while (applyPayout);
+
+        for (uint i = 0; i < sortedOverLimitOrders.length; i++) {
+            if (sortedOverLimitOrders[i].status == LimitOrderStatus.Initial) {
+                // refund participate amount to user
+                token.safeTransfer(sortedOverLimitOrders[i].user, sortedOverLimitOrders[i].amount);
+                console.log("[OL][refund]%s, %s", sortedOverLimitOrders[i].user, sortedOverLimitOrders[i].amount);
+                continue;
+            }
+
+            for (uint j = 0; j < overLimitOrders[epoch].length; j++) {
+                if (
+                    sortedOverLimitOrders[i].user ==
+                    overLimitOrders[epoch][j].user &&
+                    sortedOverLimitOrders[i].blockTimestamp ==
+                    overLimitOrders[epoch][j].blockTimestamp
+                ) {
+                    overLimitOrders[epoch][j].status = LimitOrderStatus.Approve;
+                    _participate(
+                        epoch,
+                        Position.Over,
+                        sortedOverLimitOrders[i].user,
+                        sortedOverLimitOrders[i].amount
+                    );
+                    console.log(
+                        "[done]over approved: %s, %s, %s",
+                        sortedOverLimitOrders[i].user,
+                        overLimitOrders[epoch][j].amount,
+                        overLimitOrders[epoch][j].payout
+                    );
+                    break;
+                }
+            }
+        }
+        for (uint i = 0; i < sortedUnderLimitOrders.length; i++) {
+            if (sortedUnderLimitOrders[i].status == LimitOrderStatus.Initial) {
+                // refund participate amount to user
+                token.safeTransfer(sortedUnderLimitOrders[i].user, sortedUnderLimitOrders[i].amount);
+                console.log("[UL][refund]%s, %s", sortedUnderLimitOrders[i].user, sortedUnderLimitOrders[i].amount);
+                continue;
+            }
+            for (uint j = 0; j < underLimitOrders[epoch].length; j++) {
+                if (
+                    sortedUnderLimitOrders[i].user ==
+                    underLimitOrders[epoch][j].user &&
+                    sortedUnderLimitOrders[i].blockTimestamp ==
+                    underLimitOrders[epoch][j].blockTimestamp
+                ) {
+                    underLimitOrders[epoch][j].status = LimitOrderStatus
+                        .Approve;
+                    _participate(
+                        epoch,
+                        Position.Under,
+                        sortedUnderLimitOrders[i].user,
+                        sortedUnderLimitOrders[i].amount
+                    );
+                    console.log(
+                        "[done]under approved: %s, %s, %s",
+                        sortedUnderLimitOrders[i].user,
+                        underLimitOrders[epoch][j].amount,
+                        underLimitOrders[epoch][j].payout
+                    );
+                    break;
+                }
+            }
+        }
     }
 
     function _sortByPayout(
@@ -975,7 +1138,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     ) internal pure returns (LimitOrder[] memory) {
         for (uint i = 1; i < items.length; i++)
             for (uint j = 0; j < i; j++)
-                if (items[i].payout > items[j].payout) {
+                if (items[i].payout < items[j].payout) {
                     LimitOrder memory x = items[i];
                     items[i] = items[j];
                     items[j] = x;
