@@ -522,7 +522,7 @@ contract(
       // Epoch 1
       await stVol.genesisOpenRound(currentTimestamp);
       currentEpoch = await stVol.currentEpoch();
-      await stVol.participateUnder(currentEpoch, ether("50"), { from: underUser1 });
+      await stVol.participateUnder(currentEpoch, ether("10"), { from: underUser1 });
 
       // place limit order
       await stVol.participateLimitOver(currentEpoch, ether("1"), new BN(2 * MULTIPLIER), { from: overLimitUser1 }); // payout:2x
@@ -531,11 +531,7 @@ contract(
       await stVol.participateLimitOver(currentEpoch, ether("1"), new BN(2 * MULTIPLIER), { from: overLimitUser1 }); // payout:2x
       await stVol.participateLimitOver(currentEpoch, ether("1"), new BN(2 * MULTIPLIER), { from: overLimitUser1 }); // payout:2x
 
-      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("55").toString());
-
-      // assert.equal((await stVol.rounds(1)).totalAmount, ether("0").toString());
-      // assert.equal((await stVol.rounds(1)).overAmount, ether("0").toString());
-      // assert.equal((await stVol.rounds(1)).underAmount, ether("0").toString());
+      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("15").toString());
 
       // Epoch 2
       // execute limit order 
@@ -545,10 +541,39 @@ contract(
       await stVol.genesisStartRound(new BN(INITIAL_PRICE), currentTimestamp); // For round 1
       currentEpoch = await stVol.currentEpoch();
 
-      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("55").toString());
-      assert.equal((await stVol.rounds(1)).totalAmount, ether("55").toString());
+      let limitOrdersResult = await stVol.getUserLimitOrdersLength(overLimitUser1, 1);
+      const overLimitOrdersLength = limitOrdersResult[0];
+      const underLimitOrdersLength = limitOrdersResult[1];
+
+      console.log("overLimitOrdersLength:%s, underLimitOrdersLength:%s", overLimitOrdersLength, underLimitOrdersLength);
+      assert.equal(overLimitOrdersLength, 5);
+      assert.equal(underLimitOrdersLength, 0);
+
+      console.log((await stVol.getUserLimitOrders(overLimitUser1, 1, Position.Over, overLimitOrdersLength)));
+      console.log((await stVol.getUserLimitOrders(overLimitUser1, 1, Position.Under, underLimitOrdersLength)));
+
+      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("15").toString());
+      assert.equal((await stVol.rounds(1)).totalAmount, ether("15").toString());
       assert.equal((await stVol.rounds(1)).overAmount, ether("5").toString());
-      assert.equal((await stVol.rounds(1)).underAmount, ether("50").toString());
+      assert.equal((await stVol.rounds(1)).underAmount, ether("10").toString());
+
+      // Epoch 3
+      // execute limit order 
+      currentTimestamp += INTERVAL_SECONDS;
+      await time.increaseTo(currentTimestamp);
+      const price130 = 13000000000; // $130
+
+      await stVol.executeRound(new BN(price130), currentTimestamp); // For round 1
+      currentEpoch = await stVol.currentEpoch();
+
+      assert.equal(await stVol.claimable(1, Position.Over, overLimitUser1), true);
+      assert.equal(await stVol.claimable(1, Position.Under, underUser1), false);
+
+      // Claim for Round 1: Total rewards = 6.92, Over = 3, Under = 4
+      let tx = await stVol.claim(1, Position.Over, { from: overLimitUser1 }); // Success
+      let { gasUsed } = tx.receipt;
+      expectEvent(tx, "Claim", { sender: overLimitUser1, epoch: new BN("1"), amount: ether("14.8") });
+      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("0.2").toString());
     });
   }
 );

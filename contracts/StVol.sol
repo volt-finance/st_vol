@@ -592,58 +592,61 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         emit NewAdminAddress(_adminAddress);
     }
 
-    /**
-     * @notice Returns round epochs and participate information for a user that has participated
-     * @param user: user address
-     * @param cursor: cursor
-     * @param size: size
-     */
-    function getUserRounds(
+    function getUserLimitOrders(
         address user,
-        uint256 cursor,
+        uint256 epoch,
+        Position position,
         uint256 size
     )
         external
         view
         returns (
-            uint256[] memory,
-            ParticipateInfo[] memory,
-            ParticipateInfo[] memory,
-            uint256
+            LimitOrder[] memory
         )
     {
-        uint256 length = size;
 
-        if (length > userRounds[user].length - cursor) {
-            length = userRounds[user].length - cursor;
-        }
+        LimitOrder[] memory limitOrders = new LimitOrder[](size);
+        if (position == Position.Over) {
+            for (uint256 i = 0; i < overLimitOrders[epoch].length; i++) {
+                if (overLimitOrders[epoch][i].user == user) {
+                    LimitOrder memory o = LimitOrder({user:overLimitOrders[epoch][i].user
+                    , payout: overLimitOrders[epoch][i].payout
+                    , amount: overLimitOrders[epoch][i].amount
+                    , blockTimestamp: overLimitOrders[epoch][i].blockTimestamp
+                    , status: overLimitOrders[epoch][i].status});
+                    limitOrders[i] = o;
+                }
+            }
 
-        uint256[] memory values = new uint256[](length);
-        ParticipateInfo[] memory overParticipateInfo = new ParticipateInfo[](
-            length
-        );
-        ParticipateInfo[] memory underParticipateInfo = new ParticipateInfo[](
-            length
-        );
-
-        for (uint256 i = 0; i < length; i++) {
-            values[i] = userRounds[user][cursor + i];
-            for (uint8 j = 0; j < 2; j++) {
-                Position p = (j == 0) ? Position.Over : Position.Under;
-                if (p == Position.Over) {
-                    overParticipateInfo[i] = ledger[values[i]][p][user];
-                } else {
-                    underParticipateInfo[i] = ledger[values[i]][p][user];
+        } else {
+            for (uint256 i = 0; i < underLimitOrders[epoch].length; i++) {
+                if (underLimitOrders[epoch][i].user == user) {
+                    LimitOrder memory u = LimitOrder({user: underLimitOrders[epoch][i].user
+                    , payout: underLimitOrders[epoch][i].payout
+                    , amount: underLimitOrders[epoch][i].amount
+                    , blockTimestamp: underLimitOrders[epoch][i].blockTimestamp
+                    , status: underLimitOrders[epoch][i].status});
+                    limitOrders[i] = u;
                 }
             }
         }
 
         return (
-            values,
-            overParticipateInfo,
-            underParticipateInfo,
-            cursor + length
+           limitOrders
         );
+    }
+
+    function getUserLimitOrdersLength(address user, uint256 epoch) external view returns (uint256, uint256) {
+        uint256 overOrdersLength = 0;
+        uint256 underOrdersLength = 0;
+
+        for (uint i= 0; i < overLimitOrders[epoch].length; i++) {
+            if (overLimitOrders[epoch][i].user == user) overOrdersLength++;
+        }
+        for (uint i= 0; i < underLimitOrders[epoch].length; i++) {
+            if (underLimitOrders[epoch][i].user == user) underOrdersLength++;
+        }
+        return (overOrdersLength, underOrdersLength);
     }
 
     /**
