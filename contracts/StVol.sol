@@ -398,7 +398,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             oracle.updatePriceFeeds{value: fee}(priceUpdateData);
         }
         PythStructs.Price memory pythPrice = oracle.getPrice(priceId);
-
         return (pythPrice.price, pythPrice.publishTime);
     }
 
