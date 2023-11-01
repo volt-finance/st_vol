@@ -18,7 +18,7 @@
     "test:v2": "hardhat test --network hardhat ./test/StVol.test.v2.ts",
     "test:coverage": "npx hardhat coverage",
     "test:size-contracts": "npx hardhat size-contracts",
-    "verify:goerli": "npx hardhat verify --constructor-args dev.arguments.js --contract \"contracts/StVolUpDown.sol:StVolUpDown\" --network goerli 0x3d0E23A345B4486310547D3488B7cB7577a5A784",
+    "verify:goerli": "npx hardhat verify --constructor-args dev.arguments.js --contract \"contracts/StVolUpDown.sol:StVolUpDown\" --network goerli 0x4e91f6EE7423E3E5531EFCc1FFB68F474D326452",
     "verify:mainnet": "npx hardhat verify --constructor-args prod.arguments.js --contract \"contracts/StVol1PerDown.sol:StVol1PerDown\" --network mainnet 0xF94e7F50120fe8276B85E21f31C6de097eab8813",
     "verify:arbitrum-goerli": "npx hardhat verify --constructor-args dev.arguments.js 0xa78E7c49BF3DD6d708aa439FF2B20a4458D40A4C --network arbitrum_goerli"
   },

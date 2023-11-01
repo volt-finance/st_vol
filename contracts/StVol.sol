@@ -9,7 +9,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
-import "hardhat/console.sol";
 
 contract StVol is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -45,6 +44,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     uint256 public constant DEFAULT_MIN_PARTICIPATE_AMOUNT = 1000000; // 1 USDC
     uint256 public constant DEFAULT_INTERVAL_SECONDS = 86400; // 24 * 60 * 60 * 1(1day)
     uint256 public constant DEFAULT_BUFFER_SECONDS = 600; // 60 * 10 (10min)
+    uint256 public lastCommittedPublishTime; // time when the last committed update was published to Pyth
 
     struct LimitOrder {
         address user;
@@ -61,7 +61,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
     mapping(uint256 => LimitOrder[]) public overLimitOrders;
     mapping(uint256 => LimitOrder[]) public underLimitOrders;
-
     mapping(uint256 => mapping(Position => mapping(address => ParticipateInfo)))
         public ledger;
     mapping(uint256 => Round) public rounds;
@@ -137,8 +136,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     );
     event EndRound(uint256 indexed epoch, int256 price);
     event StartRound(uint256 indexed epoch, int256 price);
-    event PythPriceInfo(int64 price, uint publishTime);
-
     event NewAdminAddress(address admin);
     event NewBufferAndIntervalSeconds(
         uint256 bufferSeconds,
@@ -362,13 +359,18 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @dev Callable by operator
      */
     function executeRound(
-        int64 pythPrice,
-        uint256 initDate
-    ) external whenNotPaused onlyOperator {
+        bytes[] calldata priceUpdateData,
+        uint64 initDate,
+        bool isFixed
+    ) external payable whenNotPaused onlyOperator {
         require(
             genesisOpenOnce && genesisStartOnce,
             "Can only run after genesisOpenRound and genesisStartRound is triggered"
         );
+
+        (int64 pythPrice, uint publishTime) = _getPythPrice(priceUpdateData, initDate, isFixed);
+        require(publishTime > lastCommittedPublishTime, "Pyth Oracle non increasing publishTimes");
+        lastCommittedPublishTime = publishTime;
 
         // CurrentEpoch refers to previous round (n-1)
         _safeStartRound(currentEpoch, pythPrice);
@@ -381,14 +383,23 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         _safeOpenRound(currentEpoch, initDate);
     }
 
-    function executePythPriceUpdate(
-        bytes[] calldata priceUpdateData
-    ) external payable whenNotPaused onlyOperator {
+    function _getPythPrice(
+        bytes[] memory priceUpdateData,
+        uint64 fixedTimestamp, 
+        bool isFixed
+    ) internal returns (int64, uint){
+        bytes32[] memory pythPair = new bytes32[](1);
+        pythPair[0] = priceId;
+
         uint fee = oracle.getUpdateFee(priceUpdateData);
-        oracle.updatePriceFeeds{value: fee}(priceUpdateData);
+        if (isFixed) {
+            oracle.parsePriceFeedUpdates{value: fee}(priceUpdateData, pythPair, fixedTimestamp, fixedTimestamp + 10);
+        } else {
+            oracle.updatePriceFeeds{value: fee}(priceUpdateData);
+        }
         PythStructs.Price memory pythPrice = oracle.getPrice(priceId);
 
-        emit PythPriceInfo(pythPrice.price, pythPrice.publishTime);
+        return (pythPrice.price, pythPrice.publishTime);
     }
 
     /**
@@ -396,14 +407,19 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
      * @dev Callable by operator
      */
     function genesisStartRound(
-        int64 pythPrice,
-        uint256 initDate
-    ) external whenNotPaused onlyOperator {
+        bytes[] calldata priceUpdateData,
+        uint64 initDate,
+        bool isFixed
+    ) external payable whenNotPaused onlyOperator {
         require(
             genesisOpenOnce,
             "Can only run after genesisOpenRound is triggered"
         );
         require(!genesisStartOnce, "Can only run genesisStartRound once");
+
+        (int64 pythPrice, uint publishTime) = _getPythPrice(priceUpdateData, initDate, isFixed);
+        require(publishTime > lastCommittedPublishTime, "Pyth Oracle non increasing publishTimes");
+        lastCommittedPublishTime = publishTime;
 
         _safeStartRound(currentEpoch, pythPrice);
         _placeLimitOrders(currentEpoch);
@@ -1014,16 +1030,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                     sortedOverLimitOrders[overOffset].amount) * BASE) /
                     (ra.overAmount +
                         sortedOverLimitOrders[overOffset].amount);
-
-                console.log(
-                    "[OL][0]payout",
-                    sortedOverLimitOrders[overOffset].payout
-                );
-                console.log("[OL][1]expected:", expectedPayout);
                 if (
                     sortedOverLimitOrders[overOffset].payout <= expectedPayout
                 ) {
-                    console.log("[OL][exec]over limit");
                     ra.totalAmount =
                         ra.totalAmount +
                         sortedOverLimitOrders[overOffset].amount;
@@ -1045,15 +1054,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                     (ra.underAmount +
                         sortedUnderLimitOrders[underOffset].amount);
 
-                console.log(
-                    "[UL][0]under payout:",
-                    sortedUnderLimitOrders[underOffset].payout
-                );
-                console.log("[UL][1]expected:", expectedPayout);
                 if (
                     sortedUnderLimitOrders[underOffset].payout <= expectedPayout
                 ) {
-                    console.log("[UL][exec]under limit");
                     ra.totalAmount =
                         ra.totalAmount +
                         sortedUnderLimitOrders[underOffset].amount;
@@ -1067,14 +1070,12 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                     break;
                 }
             }
-            console.log("------------------------------------");
         } while (applyPayout);
 
         for (uint i = 0; i < sortedOverLimitOrders.length; i++) {
             if (sortedOverLimitOrders[i].status == LimitOrderStatus.Undeclared) {
                 // refund participate amount to user
                 token.safeTransfer(sortedOverLimitOrders[i].user, sortedOverLimitOrders[i].amount);
-                console.log("[OL][refund]%s, %s", sortedOverLimitOrders[i].user, sortedOverLimitOrders[i].amount);
                 continue;
             }
 
@@ -1092,12 +1093,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                         sortedOverLimitOrders[i].user,
                         sortedOverLimitOrders[i].amount
                     );
-                    console.log(
-                        "[done]over approved: %s, %s, %s",
-                        sortedOverLimitOrders[i].user,
-                        overLimitOrders[epoch][j].amount,
-                        overLimitOrders[epoch][j].payout
-                    );
                     break;
                 }
             }
@@ -1106,7 +1101,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             if (sortedUnderLimitOrders[i].status == LimitOrderStatus.Undeclared) {
                 // refund participate amount to user
                 token.safeTransfer(sortedUnderLimitOrders[i].user, sortedUnderLimitOrders[i].amount);
-                console.log("[UL][refund]%s, %s", sortedUnderLimitOrders[i].user, sortedUnderLimitOrders[i].amount);
                 continue;
             }
             for (uint j = 0; j < underLimitOrders[epoch].length; j++) {
@@ -1123,12 +1117,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                         Position.Under,
                         sortedUnderLimitOrders[i].user,
                         sortedUnderLimitOrders[i].amount
-                    );
-                    console.log(
-                        "[done]under approved: %s, %s, %s",
-                        sortedUnderLimitOrders[i].user,
-                        underLimitOrders[epoch][j].amount,
-                        underLimitOrders[epoch][j].payout
                     );
                     break;
                 }
