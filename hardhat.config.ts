@@ -20,7 +20,6 @@ const mnemonic = fs.existsSync('.secret')
   : "test test test test test test test test test test test junk"
 
 const infuraKey = process.env.INFURA_KEY
-const etherscanKey = process.env.ETHERSCAN_KEY
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -91,10 +90,10 @@ export default {
   defaultNetwork: "hardhat",
   etherscan: {
     apiKey: {
-      mainnet: etherscanKey,
-      goerli: etherscanKey,
-      // arbitrum: etherscanKey,
-      // arbitrumGoerli: etherscanKey,
+      mainnet: process.env.ETHERSCAN_KEY,
+      goerli: process.env.ETHERSCAN_KEY,
+      arbitrumOne: process.env.ARBITRUM_ETHERSCAN_KEY,
+      arbitrumGoerli: process.env.ARBITRUM_ETHERSCAN_KEY,
     }
   },
   abiExporter: {

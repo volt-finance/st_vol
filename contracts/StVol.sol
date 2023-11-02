@@ -368,8 +368,15 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             "Can only run after genesisOpenRound and genesisStartRound is triggered"
         );
 
-        (int64 pythPrice, uint publishTime) = _getPythPrice(priceUpdateData, initDate, isFixed);
-        require(publishTime > lastCommittedPublishTime, "Pyth Oracle non increasing publishTimes");
+        (int64 pythPrice, uint publishTime) = _getPythPrice(
+            priceUpdateData,
+            initDate,
+            isFixed
+        );
+        require(
+            publishTime > lastCommittedPublishTime,
+            "Pyth Oracle non increasing publishTimes"
+        );
         lastCommittedPublishTime = publishTime;
 
         // CurrentEpoch refers to previous round (n-1)
@@ -385,20 +392,38 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
     function _getPythPrice(
         bytes[] memory priceUpdateData,
-        uint64 fixedTimestamp, 
+        uint64 fixedTimestamp,
         bool isFixed
-    ) internal returns (int64, uint){
+    ) internal returns (int64, uint) {
         bytes32[] memory pythPair = new bytes32[](1);
         pythPair[0] = priceId;
 
         uint fee = oracle.getUpdateFee(priceUpdateData);
         if (isFixed) {
-            oracle.parsePriceFeedUpdates{value: fee}(priceUpdateData, pythPair, fixedTimestamp, fixedTimestamp + 10);
+            oracle.parsePriceFeedUpdates{value: fee}(
+                priceUpdateData,
+                pythPair,
+                fixedTimestamp,
+                fixedTimestamp + 10
+            );
         } else {
             oracle.updatePriceFeeds{value: fee}(priceUpdateData);
         }
         PythStructs.Price memory pythPrice = oracle.getPrice(priceId);
         return (pythPrice.price, pythPrice.publishTime);
+    }
+
+    event PythPriceEvent(uint fee);
+
+    function setPtyPrice(
+        bytes[] memory priceUpdateData
+    ) external payable {
+        bytes32[] memory pythPair = new bytes32[](1);
+        pythPair[0] = priceId;
+
+        uint fee = oracle.getUpdateFee(priceUpdateData);
+        oracle.updatePriceFeeds{value: fee}(priceUpdateData);
+        emit PythPriceEvent(fee);
     }
 
     /**
@@ -416,8 +441,15 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         );
         require(!genesisStartOnce, "Can only run genesisStartRound once");
 
-        (int64 pythPrice, uint publishTime) = _getPythPrice(priceUpdateData, initDate, isFixed);
-        require(publishTime > lastCommittedPublishTime, "Pyth Oracle non increasing publishTimes");
+        (int64 pythPrice, uint publishTime) = _getPythPrice(
+            priceUpdateData,
+            initDate,
+            isFixed
+        );
+        require(
+            publishTime > lastCommittedPublishTime,
+            "Pyth Oracle non increasing publishTimes"
+        );
         lastCommittedPublishTime = publishTime;
 
         _safeStartRound(currentEpoch, pythPrice);
@@ -612,53 +644,52 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 epoch,
         Position position,
         uint256 size
-    )
-        external
-        view
-        returns (
-            LimitOrder[] memory
-        )
-    {
-
+    ) external view returns (LimitOrder[] memory) {
         LimitOrder[] memory limitOrders = new LimitOrder[](size);
         if (position == Position.Over) {
             for (uint256 i = 0; i < overLimitOrders[epoch].length; i++) {
                 if (overLimitOrders[epoch][i].user == user) {
-                    LimitOrder memory o = LimitOrder({user:overLimitOrders[epoch][i].user
-                    , payout: overLimitOrders[epoch][i].payout
-                    , amount: overLimitOrders[epoch][i].amount
-                    , blockTimestamp: overLimitOrders[epoch][i].blockTimestamp
-                    , status: overLimitOrders[epoch][i].status});
+                    LimitOrder memory o = LimitOrder({
+                        user: overLimitOrders[epoch][i].user,
+                        payout: overLimitOrders[epoch][i].payout,
+                        amount: overLimitOrders[epoch][i].amount,
+                        blockTimestamp: overLimitOrders[epoch][i]
+                            .blockTimestamp,
+                        status: overLimitOrders[epoch][i].status
+                    });
                     limitOrders[i] = o;
                 }
             }
-
         } else {
             for (uint256 i = 0; i < underLimitOrders[epoch].length; i++) {
                 if (underLimitOrders[epoch][i].user == user) {
-                    LimitOrder memory u = LimitOrder({user: underLimitOrders[epoch][i].user
-                    , payout: underLimitOrders[epoch][i].payout
-                    , amount: underLimitOrders[epoch][i].amount
-                    , blockTimestamp: underLimitOrders[epoch][i].blockTimestamp
-                    , status: underLimitOrders[epoch][i].status});
+                    LimitOrder memory u = LimitOrder({
+                        user: underLimitOrders[epoch][i].user,
+                        payout: underLimitOrders[epoch][i].payout,
+                        amount: underLimitOrders[epoch][i].amount,
+                        blockTimestamp: underLimitOrders[epoch][i]
+                            .blockTimestamp,
+                        status: underLimitOrders[epoch][i].status
+                    });
                     limitOrders[i] = u;
                 }
             }
         }
 
-        return (
-           limitOrders
-        );
+        return (limitOrders);
     }
 
-    function getUserLimitOrdersLength(address user, uint256 epoch) external view returns (uint256, uint256) {
+    function getUserLimitOrdersLength(
+        address user,
+        uint256 epoch
+    ) external view returns (uint256, uint256) {
         uint256 overOrdersLength = 0;
         uint256 underOrdersLength = 0;
 
-        for (uint i= 0; i < overLimitOrders[epoch].length; i++) {
+        for (uint i = 0; i < overLimitOrders[epoch].length; i++) {
             if (overLimitOrders[epoch][i].user == user) overOrdersLength++;
         }
-        for (uint i= 0; i < underLimitOrders[epoch].length; i++) {
+        for (uint i = 0; i < underLimitOrders[epoch].length; i++) {
             if (underLimitOrders[epoch][i].user == user) underOrdersLength++;
         }
         return (overOrdersLength, underOrdersLength);
@@ -1012,7 +1043,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint underOffset = 0;
 
         Round storage round = rounds[epoch];
-        RoundAmount memory ra = RoundAmount(round.totalAmount, round.overAmount, round.underAmount);
+        RoundAmount memory ra = RoundAmount(
+            round.totalAmount,
+            round.overAmount,
+            round.underAmount
+        );
 
         bool applyPayout = false;
         LimitOrder[] memory sortedOverLimitOrders = _sortByPayout(
@@ -1021,14 +1056,13 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         LimitOrder[] memory sortedUnderLimitOrders = _sortByPayout(
             underLimitOrders[epoch]
         );
-        
+
         do {
             // proc over limit orders
             for (; overOffset < sortedOverLimitOrders.length; overOffset++) {
                 uint expectedPayout = ((ra.totalAmount +
                     sortedOverLimitOrders[overOffset].amount) * BASE) /
-                    (ra.overAmount +
-                        sortedOverLimitOrders[overOffset].amount);
+                    (ra.overAmount + sortedOverLimitOrders[overOffset].amount);
                 if (
                     sortedOverLimitOrders[overOffset].payout <= expectedPayout
                 ) {
@@ -1072,9 +1106,14 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         } while (applyPayout);
 
         for (uint i = 0; i < sortedOverLimitOrders.length; i++) {
-            if (sortedOverLimitOrders[i].status == LimitOrderStatus.Undeclared) {
+            if (
+                sortedOverLimitOrders[i].status == LimitOrderStatus.Undeclared
+            ) {
                 // refund participate amount to user
-                token.safeTransfer(sortedOverLimitOrders[i].user, sortedOverLimitOrders[i].amount);
+                token.safeTransfer(
+                    sortedOverLimitOrders[i].user,
+                    sortedOverLimitOrders[i].amount
+                );
                 continue;
             }
 
@@ -1097,9 +1136,14 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             }
         }
         for (uint i = 0; i < sortedUnderLimitOrders.length; i++) {
-            if (sortedUnderLimitOrders[i].status == LimitOrderStatus.Undeclared) {
+            if (
+                sortedUnderLimitOrders[i].status == LimitOrderStatus.Undeclared
+            ) {
                 // refund participate amount to user
-                token.safeTransfer(sortedUnderLimitOrders[i].user, sortedUnderLimitOrders[i].amount);
+                token.safeTransfer(
+                    sortedUnderLimitOrders[i].user,
+                    sortedUnderLimitOrders[i].amount
+                );
                 continue;
             }
             for (uint j = 0; j < underLimitOrders[epoch].length; j++) {

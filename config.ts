@@ -8,9 +8,9 @@ export default {
     },
     Oracle: {
       mainnet: "0x4305FB66699C3B2702D4d05CF36551390A4c69C6",
-      arbitrum: "",
-      arbitrum_goerli: "",
       goerli: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C", // PythContractAddress
+      arbitrum: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
+      arbitrum_goerli: "0x939C0e902FF5B3F7BA666Cc8F6aC75EE76d3f900",
     },
     // Oracle: {
     //   mainnet: "",
@@ -48,8 +48,8 @@ export default {
       ETH_USD: "",
     },
     arbitrum_goerli: {
-      BTC_USD: "",
-      ETH_USD: "",
+      BTC_USD: "0xf9c0172ba10dfa4d19088d94f5bf61d3b54d5bd7483a322a982e1373ee8ea31b",
+      ETH_USD: "0xca80ba6dc32e08d06f1aa886011eed1d77c77be9eb761cc10d72b7d0a2fd57a6",
     },
     goerli: {
       BTC_USD: "0xf9c0172ba10dfa4d19088d94f5bf61d3b54d5bd7483a322a982e1373ee8ea31b",

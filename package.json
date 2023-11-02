@@ -11,16 +11,17 @@
     "deploy-btc:mainnet": "npx hardhat run --network mainnet scripts/deploy-btc-stvol.ts",
     "deploy-eth:goerli": "npx hardhat run --network goerli scripts/deploy-eth-stvol.ts",
     "deploy-btc:goerli": "npx hardhat run --network goerli scripts/deploy-btc-stvol.ts",
-    "deploy:arbitrum-goerli": "npx hardhat run --network arbitrum_goerli scripts/deploy.ts",
-    "deploy:arbitrum": "npx hardhat run --network arbitrum scripts/deploy.ts",
+    "deploy:arbitrum-goerli": "npx hardhat run --network arbitrum_goerli scripts/deploy-eth-stvol.ts",
+    "deploy:arbitrum": "npx hardhat run --network arbitrum scripts/deploy-eth-stvol.ts",
     "test": "npx hardhat test",
     "test:iter": "hardhat test --network hardhat ./test/IteratableOrderSet.spec.ts",
     "test:v2": "hardhat test --network hardhat ./test/StVol.test.v2.ts",
     "test:coverage": "npx hardhat coverage",
     "test:size-contracts": "npx hardhat size-contracts",
-    "verify:goerli": "npx hardhat verify --constructor-args dev.arguments.js --contract \"contracts/StVolUpDown.sol:StVolUpDown\" --network goerli 0x40b0c000893164D6963597F572699107fB27CE04",
+    "verify:goerli": "npx hardhat verify --constructor-args dev.arguments.js --contract \"contracts/StVolUpDown.sol:StVolUpDown\" --network goerli 0x70396E8b0cEE022B301b832bE796e35A28250FCC",
     "verify:mainnet": "npx hardhat verify --constructor-args prod.arguments.js --contract \"contracts/StVol1PerDown.sol:StVol1PerDown\" --network mainnet 0xF94e7F50120fe8276B85E21f31C6de097eab8813",
-    "verify:arbitrum-goerli": "npx hardhat verify --constructor-args dev.arguments.js 0xa78E7c49BF3DD6d708aa439FF2B20a4458D40A4C --network arbitrum_goerli"
+    "verify:arbitrum-goerli": "npx hardhat verify --constructor-args arbi.dev.arguments.js --contract \"contracts/StVolUpDown.sol:StVolUpDown\" --network arbitrum_goerli 0x623fcF1AE2dcD0BC278dfb330996d1CB4E3CF719",
+    "verify:arbitrum": "npx hardhat verify --constructor-args arbi.prod.arguments.js --contract \"contracts/StVolUpDown.sol:StVolUpDown\" --network arbitrum 0x40b0c000893164D6963597F572699107fB27CE04"
   },
   "devDependencies": {
     "@chainlink/contracts": "^0.2.0",
