@@ -19,7 +19,7 @@ const main = async () => {
       config.Address.Oracle[networkName] === ethers.constants.AddressZero ||
       config.Address.Admin[networkName] === ethers.constants.AddressZero ||
       config.Address.Operator[networkName] === ethers.constants.AddressZero ||
-      config.Address.OperatorVault[networkName] === ethers.constants.AddressZero 
+      config.Address.OperatorVault[networkName] === ethers.constants.AddressZero
     ) {
       throw new Error("Missing addresses (Chainlink Oracle and/or Admin/Operator)");
     }
