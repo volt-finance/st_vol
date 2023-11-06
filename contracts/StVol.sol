@@ -901,7 +901,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     function cancelLimitOrder(
         uint256 epoch,
         Position position,
-        uint256 blockTimestamp
+        uint256 blockTimestamp,
+        uint256 amount
     ) external {
         require(rounds[epoch].openTimestamp != 0,
             "E21"
@@ -913,7 +914,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         if (position == Position.Over) {
             for (uint256 i = 0; i < overLimitOrders[epoch].length; i++) {
                 if (overLimitOrders[epoch][i].user == msg.sender
-                    && overLimitOrders[epoch][i].blockTimestamp == blockTimestamp) {
+                    && overLimitOrders[epoch][i].blockTimestamp == blockTimestamp
+                    && overLimitOrders[epoch][i].amount == amount) {
 
                     overLimitOrders[epoch][i].status = LimitOrderStatus.Cancelled;    
                     emit CancelLimitOrder(msg.sender, epoch, position, overLimitOrders[epoch][i].amount);
@@ -927,7 +929,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         } else {
             for (uint256 i = 0; i < underLimitOrders[epoch].length; i++) {
                 if (underLimitOrders[epoch][i].user == msg.sender
-                    && underLimitOrders[epoch][i].blockTimestamp == blockTimestamp) {
+                    && underLimitOrders[epoch][i].blockTimestamp == blockTimestamp
+                    && underLimitOrders[epoch][i].amount == amount) {
                     underLimitOrders[epoch][i].status = LimitOrderStatus.Cancelled;    
                     emit CancelLimitOrder(msg.sender, epoch, position, underLimitOrders[epoch][i].amount);
                     
