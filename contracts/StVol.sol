@@ -944,8 +944,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     function _placeLimitOrders(uint256 epoch) internal {
-        uint underOffset = 0;
-
         RoundAmount memory ra = RoundAmount(
             rounds[epoch].totalAmount,
             rounds[epoch].overAmount,
@@ -983,12 +981,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
             applyPayout = false;
             // proc under limit orders
-            for (; underOffset < sortedUnderLimitOrders.length; underOffset++) {
+            for (uint underOffset = 0; underOffset < sortedUnderLimitOrders.length; underOffset++) {
                 uint expectedPayout = ((ra.totalAmount +
                     sortedUnderLimitOrders[underOffset].amount) * BASE) /
                     (ra.underAmount +
                         sortedUnderLimitOrders[underOffset].amount);
-
                 if (
                     sortedUnderLimitOrders[underOffset].payout <= expectedPayout
                     && sortedUnderLimitOrders[underOffset].status == LimitOrderStatus.Undeclared
@@ -1002,8 +999,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                     sortedUnderLimitOrders[underOffset]
                         .status = LimitOrderStatus.Approve;
                     applyPayout = true;
-                } else {
-                    break;
                 }
             }
         } while (applyPayout);
