@@ -944,7 +944,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     function _placeLimitOrders(uint256 epoch) internal {
-        uint overOffset = 0;
         uint underOffset = 0;
 
         RoundAmount memory ra = RoundAmount(
@@ -963,7 +962,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
         do {
             // proc over limit orders
-            for (; overOffset < sortedOverLimitOrders.length; overOffset++) {
+            for (uint overOffset = 0; overOffset < sortedOverLimitOrders.length; overOffset++) {
                 uint expectedPayout = ((ra.totalAmount +
                     sortedOverLimitOrders[overOffset].amount) * BASE) /
                     (ra.overAmount + sortedOverLimitOrders[overOffset].amount);
@@ -992,7 +991,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
                 if (
                     sortedUnderLimitOrders[underOffset].payout <= expectedPayout
-                    && sortedUnderLimitOrders[overOffset].status == LimitOrderStatus.Undeclared
+                    && sortedUnderLimitOrders[underOffset].status == LimitOrderStatus.Undeclared
                 ) {
                     ra.totalAmount =
                         ra.totalAmount +
