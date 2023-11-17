@@ -28,5 +28,4 @@ contract StVolUpDown is StVol {
         StVol.StrategyType.None, // None: Up & Down
         _priceId
     ) {}
-
 }

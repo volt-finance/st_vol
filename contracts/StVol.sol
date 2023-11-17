@@ -144,13 +144,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 indexed epoch,
         uint256 amount,
         uint256 payout,
-        Position position
-    );
-    event CancelLimitOrder(
-        address indexed sender,
-        uint256 indexed epoch,
+        uint256 placeTimestamp,
         Position position,
-        uint256 amount 
+        LimitOrderStatus status
     );
     event Claim(
         address indexed sender,
@@ -160,7 +156,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     );
     event EndRound(uint256 indexed epoch, int256 price);
     event StartRound(uint256 indexed epoch, int256 price);
-    event Pause(uint256 indexed epoch);
     event RewardsCalculated(
         uint256 indexed epoch,
         uint256 rewardBaseCalAmount,
@@ -408,13 +403,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
     function pause() external whenNotPaused onlyAdmin {
         _pause();
-        emit Pause(currentEpoch);
     }
 
-    /**
-     * @notice Claim all rewards in treasury
-     * @dev Callable by admin
-     */
     function claimTreasury() external nonReentrant onlyAdmin {
         uint256 currentTreasuryAmount = treasuryAmount;
         treasuryAmount = 0;
@@ -426,11 +416,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         );
     }
 
-    /**
-     * @notice called by the admin to unpause, returns to normal state
-     * Reset genesis state. Once paused, the rounds would need to be kickstarted by genesis
-     * @dev Callable by admin or operator
-     */
     function unpause() external whenPaused onlyAdmin {
         genesisOpenOnce = false;
         genesisStartOnce = false;
@@ -522,59 +507,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         if (reward > 0) {
             token.safeTransfer(_user, reward);
         }
-    }
-
-    function getUserLimitOrders(
-        address user,
-        uint256 epoch,
-        Position position,
-        uint256 size
-    ) external view returns (LimitOrder[] memory) {
-        LimitOrder[] memory limitOrders = new LimitOrder[](size);
-        if (position == Position.Over) {
-            for (uint256 i = 0; i < overLimitOrders[epoch].length; i++) {
-                if (overLimitOrders[epoch][i].user == user) {
-                    limitOrders[i] = LimitOrder({
-                        user: overLimitOrders[epoch][i].user,
-                        payout: overLimitOrders[epoch][i].payout,
-                        amount: overLimitOrders[epoch][i].amount,
-                        blockTimestamp: overLimitOrders[epoch][i]
-                            .blockTimestamp,
-                        status: overLimitOrders[epoch][i].status
-                    });
-                }
-            }
-        } else {
-            for (uint256 i = 0; i < underLimitOrders[epoch].length; i++) {
-                if (underLimitOrders[epoch][i].user == user) {
-                    limitOrders[i] = LimitOrder({
-                        user: underLimitOrders[epoch][i].user,
-                        payout: underLimitOrders[epoch][i].payout,
-                        amount: underLimitOrders[epoch][i].amount,
-                        blockTimestamp: underLimitOrders[epoch][i]
-                            .blockTimestamp,
-                        status: underLimitOrders[epoch][i].status
-                    });
-                }
-            }
-        }
-        return (limitOrders);
-    }
-
-    function getUserLimitOrdersLength(
-        address user,
-        uint256 epoch
-    ) external view returns (uint256, uint256) {
-        uint256 overOrdersLength = 0;
-        uint256 underOrdersLength = 0;
-
-        for (uint i = 0; i < overLimitOrders[epoch].length; i++) {
-            if (overLimitOrders[epoch][i].user == user) overOrdersLength++;
-        }
-        for (uint i = 0; i < underLimitOrders[epoch].length; i++) {
-            if (underLimitOrders[epoch][i].user == user) underOrdersLength++;
-        }
-        return (overOrdersLength, underOrdersLength);
     }
 
     function claimable(
@@ -823,7 +755,13 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 LimitOrderStatus.Undeclared
             )
         );
-        emit ParticipateLimitOrder(msg.sender, epoch, _amount, _payout, Position.Over);
+        emit ParticipateLimitOrder(msg.sender
+        , epoch
+        , _amount
+        , _payout
+        , block.timestamp
+        , Position.Over
+        , LimitOrderStatus.Undeclared);
     }
 
     /**
@@ -853,7 +791,13 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 LimitOrderStatus.Undeclared
             )
         );
-        emit ParticipateLimitOrder(msg.sender, epoch, _amount, _payout, Position.Under);
+        emit ParticipateLimitOrder(msg.sender
+        , epoch
+        , _amount
+        , _payout
+        , block.timestamp
+        , Position.Under
+        , LimitOrderStatus.Undeclared);
     }
 
     function cancelLimitOrder(
@@ -876,11 +820,16 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                     && overLimitOrders[epoch][i].amount == amount) {
 
                     overLimitOrders[epoch][i].status = LimitOrderStatus.Cancelled;    
-                    emit CancelLimitOrder(msg.sender, epoch, position, overLimitOrders[epoch][i].amount);
-                    
                     if (overLimitOrders[epoch][i].amount > 0) {
                         token.safeTransfer(msg.sender, overLimitOrders[epoch][i].amount);
                     }
+                    emit ParticipateLimitOrder(msg.sender
+                    , epoch
+                    , overLimitOrders[epoch][i].amount
+                    , overLimitOrders[epoch][i].payout
+                    , overLimitOrders[epoch][i].blockTimestamp
+                    , position
+                    , LimitOrderStatus.Cancelled);
                     break;
                 }
             }
@@ -889,12 +838,18 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 if (underLimitOrders[epoch][i].user == msg.sender
                     && underLimitOrders[epoch][i].blockTimestamp == blockTimestamp
                     && underLimitOrders[epoch][i].amount == amount) {
+
                     underLimitOrders[epoch][i].status = LimitOrderStatus.Cancelled;    
-                    emit CancelLimitOrder(msg.sender, epoch, position, underLimitOrders[epoch][i].amount);
-                    
                     if (underLimitOrders[epoch][i].amount > 0) {
                         token.safeTransfer(msg.sender, underLimitOrders[epoch][i].amount);
                     }
+                    emit ParticipateLimitOrder(msg.sender
+                    , epoch
+                    , underLimitOrders[epoch][i].amount
+                    , underLimitOrders[epoch][i].payout
+                    , underLimitOrders[epoch][i].blockTimestamp
+                    , position
+                    , LimitOrderStatus.Cancelled);
                     break;
                 }
             }
@@ -977,6 +932,14 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                             sortedOverLimitOrders[i].user,
                             sortedOverLimitOrders[i].amount
                         );
+                        emit ParticipateLimitOrder(
+                            sortedOverLimitOrders[i].user
+                            , epoch
+                            , sortedOverLimitOrders[i].amount
+                            , sortedOverLimitOrders[i].payout
+                            , sortedOverLimitOrders[i].blockTimestamp
+                            , Position.Over
+                            , LimitOrderStatus.Cancelled);
                         break;
                     } 
                     if (sortedOverLimitOrders[i].status == LimitOrderStatus.Approve) {
@@ -987,6 +950,14 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                             sortedOverLimitOrders[i].user,
                             sortedOverLimitOrders[i].amount
                         );
+                        emit ParticipateLimitOrder(
+                            sortedOverLimitOrders[i].user
+                            , epoch
+                            , sortedOverLimitOrders[i].amount
+                            , sortedOverLimitOrders[i].payout
+                            , sortedOverLimitOrders[i].blockTimestamp
+                            , Position.Over
+                            , LimitOrderStatus.Approve);
                         break;
                     }
                 }
@@ -1009,6 +980,14 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                             sortedUnderLimitOrders[i].user,
                             sortedUnderLimitOrders[i].amount
                         );
+                        emit ParticipateLimitOrder(
+                            sortedUnderLimitOrders[i].user
+                            , epoch
+                            , sortedUnderLimitOrders[i].amount
+                            , sortedUnderLimitOrders[i].payout
+                            , sortedUnderLimitOrders[i].blockTimestamp
+                            , Position.Under
+                            , LimitOrderStatus.Cancelled);
                         break;
                     } 
                     if (sortedUnderLimitOrders[i].status == LimitOrderStatus.Approve) {
@@ -1019,6 +998,14 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                             sortedUnderLimitOrders[i].user,
                             sortedUnderLimitOrders[i].amount
                         );
+                        emit ParticipateLimitOrder(
+                            sortedUnderLimitOrders[i].user
+                            , epoch
+                            , sortedUnderLimitOrders[i].amount
+                            , sortedUnderLimitOrders[i].payout
+                            , sortedUnderLimitOrders[i].blockTimestamp
+                            , Position.Under
+                            , LimitOrderStatus.Approve);
                         break;
                     }
                 }

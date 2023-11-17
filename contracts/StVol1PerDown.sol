@@ -28,5 +28,4 @@ contract StVol1PerDown is StVol {
         StVol.StrategyType.Down,
         _priceId
     ) {}
-
 }
