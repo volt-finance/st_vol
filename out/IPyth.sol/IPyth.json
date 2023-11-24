@@ -1,0 +1,2495 @@
+{
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint16",
+          "name": "chainId",
+          "type": "uint16"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "sequenceNumber",
+          "type": "uint64"
+        }
+      ],
+      "name": "BatchPriceFeedUpdate",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "id",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "publishTime",
+          "type": "uint64"
+        },
+        {
+          "indexed": false,
+          "internalType": "int64",
+          "name": "price",
+          "type": "int64"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "conf",
+          "type": "uint64"
+        }
+      ],
+      "name": "PriceFeedUpdate",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getEmaPrice",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "int64",
+              "name": "price",
+              "type": "int64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "conf",
+              "type": "uint64"
+            },
+            {
+              "internalType": "int32",
+              "name": "expo",
+              "type": "int32"
+            },
+            {
+              "internalType": "uint256",
+              "name": "publishTime",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct PythStructs.Price",
+          "name": "price",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "id",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "age",
+          "type": "uint256"
+        }
+      ],
+      "name": "getEmaPriceNoOlderThan",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "int64",
+              "name": "price",
+              "type": "int64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "conf",
+              "type": "uint64"
+            },
+            {
+              "internalType": "int32",
+              "name": "expo",
+              "type": "int32"
+            },
+            {
+              "internalType": "uint256",
+              "name": "publishTime",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct PythStructs.Price",
+          "name": "price",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getEmaPriceUnsafe",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "int64",
+              "name": "price",
+              "type": "int64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "conf",
+              "type": "uint64"
+            },
+            {
+              "internalType": "int32",
+              "name": "expo",
+              "type": "int32"
+            },
+            {
+              "internalType": "uint256",
+              "name": "publishTime",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct PythStructs.Price",
+          "name": "price",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getPrice",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "int64",
+              "name": "price",
+              "type": "int64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "conf",
+              "type": "uint64"
+            },
+            {
+              "internalType": "int32",
+              "name": "expo",
+              "type": "int32"
+            },
+            {
+              "internalType": "uint256",
+              "name": "publishTime",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct PythStructs.Price",
+          "name": "price",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "id",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "age",
+          "type": "uint256"
+        }
+      ],
+      "name": "getPriceNoOlderThan",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "int64",
+              "name": "price",
+              "type": "int64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "conf",
+              "type": "uint64"
+            },
+            {
+              "internalType": "int32",
+              "name": "expo",
+              "type": "int32"
+            },
+            {
+              "internalType": "uint256",
+              "name": "publishTime",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct PythStructs.Price",
+          "name": "price",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getPriceUnsafe",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "int64",
+              "name": "price",
+              "type": "int64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "conf",
+              "type": "uint64"
+            },
+            {
+              "internalType": "int32",
+              "name": "expo",
+              "type": "int32"
+            },
+            {
+              "internalType": "uint256",
+              "name": "publishTime",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct PythStructs.Price",
+          "name": "price",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes[]",
+          "name": "updateData",
+          "type": "bytes[]"
+        }
+      ],
+      "name": "getUpdateFee",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "feeAmount",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getValidTimePeriod",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "validTimePeriod",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes[]",
+          "name": "updateData",
+          "type": "bytes[]"
+        },
+        {
+          "internalType": "bytes32[]",
+          "name": "priceIds",
+          "type": "bytes32[]"
+        },
+        {
+          "internalType": "uint64",
+          "name": "minPublishTime",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint64",
+          "name": "maxPublishTime",
+          "type": "uint64"
+        }
+      ],
+      "name": "parsePriceFeedUpdates",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "bytes32",
+              "name": "id",
+              "type": "bytes32"
+            },
+            {
+              "components": [
+                {
+                  "internalType": "int64",
+                  "name": "price",
+                  "type": "int64"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "conf",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "int32",
+                  "name": "expo",
+                  "type": "int32"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "publishTime",
+                  "type": "uint256"
+                }
+              ],
+              "internalType": "struct PythStructs.Price",
+              "name": "price",
+              "type": "tuple"
+            },
+            {
+              "components": [
+                {
+                  "internalType": "int64",
+                  "name": "price",
+                  "type": "int64"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "conf",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "int32",
+                  "name": "expo",
+                  "type": "int32"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "publishTime",
+                  "type": "uint256"
+                }
+              ],
+              "internalType": "struct PythStructs.Price",
+              "name": "emaPrice",
+              "type": "tuple"
+            }
+          ],
+          "internalType": "struct PythStructs.PriceFeed[]",
+          "name": "priceFeeds",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes[]",
+          "name": "updateData",
+          "type": "bytes[]"
+        }
+      ],
+      "name": "updatePriceFeeds",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes[]",
+          "name": "updateData",
+          "type": "bytes[]"
+        },
+        {
+          "internalType": "bytes32[]",
+          "name": "priceIds",
+          "type": "bytes32[]"
+        },
+        {
+          "internalType": "uint64[]",
+          "name": "publishTimes",
+          "type": "uint64[]"
+        }
+      ],
+      "name": "updatePriceFeedsIfNecessary",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    }
+  ],
+  "bytecode": {
+    "object": "0x",
+    "sourceMap": "",
+    "linkReferences": {}
+  },
+  "deployedBytecode": {
+    "object": "0x",
+    "sourceMap": "",
+    "linkReferences": {}
+  },
+  "methodIdentifiers": {
+    "getEmaPrice(bytes32)": "b5dcc911",
+    "getEmaPriceNoOlderThan(bytes32,uint256)": "711a2e28",
+    "getEmaPriceUnsafe(bytes32)": "9474f45b",
+    "getPrice(bytes32)": "31d98b3f",
+    "getPriceNoOlderThan(bytes32,uint256)": "a4ae35e0",
+    "getPriceUnsafe(bytes32)": "96834ad3",
+    "getUpdateFee(bytes[])": "d47eed45",
+    "getValidTimePeriod()": "e18910a3",
+    "parsePriceFeedUpdates(bytes[],bytes32[],uint64,uint64)": "4716e9c5",
+    "updatePriceFeeds(bytes[])": "ef9e5e28",
+    "updatePriceFeedsIfNecessary(bytes[],bytes32[],uint64[])": "b9256d28"
+  },
+  "rawMetadata": "{\"compiler\":{\"version\":\"0.8.21+commit.d9974bed\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint16\",\"name\":\"chainId\",\"type\":\"uint16\"},{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"sequenceNumber\",\"type\":\"uint64\"}],\"name\":\"BatchPriceFeedUpdate\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"id\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"publishTime\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"int64\",\"name\":\"price\",\"type\":\"int64\"},{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"conf\",\"type\":\"uint64\"}],\"name\":\"PriceFeedUpdate\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"id\",\"type\":\"bytes32\"}],\"name\":\"getEmaPrice\",\"outputs\":[{\"components\":[{\"internalType\":\"int64\",\"name\":\"price\",\"type\":\"int64\"},{\"internalType\":\"uint64\",\"name\":\"conf\",\"type\":\"uint64\"},{\"internalType\":\"int32\",\"name\":\"expo\",\"type\":\"int32\"},{\"internalType\":\"uint256\",\"name\":\"publishTime\",\"type\":\"uint256\"}],\"internalType\":\"struct PythStructs.Price\",\"name\":\"price\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"id\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"age\",\"type\":\"uint256\"}],\"name\":\"getEmaPriceNoOlderThan\",\"outputs\":[{\"components\":[{\"internalType\":\"int64\",\"name\":\"price\",\"type\":\"int64\"},{\"internalType\":\"uint64\",\"name\":\"conf\",\"type\":\"uint64\"},{\"internalType\":\"int32\",\"name\":\"expo\",\"type\":\"int32\"},{\"internalType\":\"uint256\",\"name\":\"publishTime\",\"type\":\"uint256\"}],\"internalType\":\"struct PythStructs.Price\",\"name\":\"price\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"id\",\"type\":\"bytes32\"}],\"name\":\"getEmaPriceUnsafe\",\"outputs\":[{\"components\":[{\"internalType\":\"int64\",\"name\":\"price\",\"type\":\"int64\"},{\"internalType\":\"uint64\",\"name\":\"conf\",\"type\":\"uint64\"},{\"internalType\":\"int32\",\"name\":\"expo\",\"type\":\"int32\"},{\"internalType\":\"uint256\",\"name\":\"publishTime\",\"type\":\"uint256\"}],\"internalType\":\"struct PythStructs.Price\",\"name\":\"price\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"id\",\"type\":\"bytes32\"}],\"name\":\"getPrice\",\"outputs\":[{\"components\":[{\"internalType\":\"int64\",\"name\":\"price\",\"type\":\"int64\"},{\"internalType\":\"uint64\",\"name\":\"conf\",\"type\":\"uint64\"},{\"internalType\":\"int32\",\"name\":\"expo\",\"type\":\"int32\"},{\"internalType\":\"uint256\",\"name\":\"publishTime\",\"type\":\"uint256\"}],\"internalType\":\"struct PythStructs.Price\",\"name\":\"price\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"id\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"age\",\"type\":\"uint256\"}],\"name\":\"getPriceNoOlderThan\",\"outputs\":[{\"components\":[{\"internalType\":\"int64\",\"name\":\"price\",\"type\":\"int64\"},{\"internalType\":\"uint64\",\"name\":\"conf\",\"type\":\"uint64\"},{\"internalType\":\"int32\",\"name\":\"expo\",\"type\":\"int32\"},{\"internalType\":\"uint256\",\"name\":\"publishTime\",\"type\":\"uint256\"}],\"internalType\":\"struct PythStructs.Price\",\"name\":\"price\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"id\",\"type\":\"bytes32\"}],\"name\":\"getPriceUnsafe\",\"outputs\":[{\"components\":[{\"internalType\":\"int64\",\"name\":\"price\",\"type\":\"int64\"},{\"internalType\":\"uint64\",\"name\":\"conf\",\"type\":\"uint64\"},{\"internalType\":\"int32\",\"name\":\"expo\",\"type\":\"int32\"},{\"internalType\":\"uint256\",\"name\":\"publishTime\",\"type\":\"uint256\"}],\"internalType\":\"struct PythStructs.Price\",\"name\":\"price\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes[]\",\"name\":\"updateData\",\"type\":\"bytes[]\"}],\"name\":\"getUpdateFee\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"feeAmount\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getValidTimePeriod\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"validTimePeriod\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes[]\",\"name\":\"updateData\",\"type\":\"bytes[]\"},{\"internalType\":\"bytes32[]\",\"name\":\"priceIds\",\"type\":\"bytes32[]\"},{\"internalType\":\"uint64\",\"name\":\"minPublishTime\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"maxPublishTime\",\"type\":\"uint64\"}],\"name\":\"parsePriceFeedUpdates\",\"outputs\":[{\"components\":[{\"internalType\":\"bytes32\",\"name\":\"id\",\"type\":\"bytes32\"},{\"components\":[{\"internalType\":\"int64\",\"name\":\"price\",\"type\":\"int64\"},{\"internalType\":\"uint64\",\"name\":\"conf\",\"type\":\"uint64\"},{\"internalType\":\"int32\",\"name\":\"expo\",\"type\":\"int32\"},{\"internalType\":\"uint256\",\"name\":\"publishTime\",\"type\":\"uint256\"}],\"internalType\":\"struct PythStructs.Price\",\"name\":\"price\",\"type\":\"tuple\"},{\"components\":[{\"internalType\":\"int64\",\"name\":\"price\",\"type\":\"int64\"},{\"internalType\":\"uint64\",\"name\":\"conf\",\"type\":\"uint64\"},{\"internalType\":\"int32\",\"name\":\"expo\",\"type\":\"int32\"},{\"internalType\":\"uint256\",\"name\":\"publishTime\",\"type\":\"uint256\"}],\"internalType\":\"struct PythStructs.Price\",\"name\":\"emaPrice\",\"type\":\"tuple\"}],\"internalType\":\"struct PythStructs.PriceFeed[]\",\"name\":\"priceFeeds\",\"type\":\"tuple[]\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes[]\",\"name\":\"updateData\",\"type\":\"bytes[]\"}],\"name\":\"updatePriceFeeds\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes[]\",\"name\":\"updateData\",\"type\":\"bytes[]\"},{\"internalType\":\"bytes32[]\",\"name\":\"priceIds\",\"type\":\"bytes32[]\"},{\"internalType\":\"uint64[]\",\"name\":\"publishTimes\",\"type\":\"uint64[]\"}],\"name\":\"updatePriceFeedsIfNecessary\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"}],\"devdoc\":{\"author\":\"Pyth Data Association\",\"details\":\"Please refer to the guidance at https://docs.pyth.network/consumers/best-practices for how to consume prices safely.\",\"events\":{\"BatchPriceFeedUpdate(uint16,uint64)\":{\"details\":\"Emitted when a batch price update is processed successfully.\",\"params\":{\"chainId\":\"ID of the source chain that the batch price update comes from.\",\"sequenceNumber\":\"Sequence number of the batch price update.\"}},\"PriceFeedUpdate(bytes32,uint64,int64,uint64)\":{\"details\":\"Emitted when the price feed with `id` has received a fresh update.\",\"params\":{\"conf\":\"Confidence interval of the given price update.\",\"id\":\"The Pyth Price Feed ID.\",\"price\":\"Price of the given price update.\",\"publishTime\":\"Publish time of the given price update.\"}}},\"kind\":\"dev\",\"methods\":{\"getEmaPrice(bytes32)\":{\"details\":\"Reverts if the EMA price is not available.\",\"params\":{\"id\":\"The Pyth Price Feed ID of which to fetch the EMA price and confidence interval.\"},\"returns\":{\"price\":\"- please read the documentation of PythStructs.Price to understand how to use this safely.\"}},\"getEmaPriceNoOlderThan(bytes32,uint256)\":{\"details\":\"This function is a sanity-checked version of `getEmaPriceUnsafe` which is useful in applications that require a sufficiently-recent price. Reverts if the price wasn't updated sufficiently recently.\",\"returns\":{\"price\":\"- please read the documentation of PythStructs.Price to understand how to use this safely.\"}},\"getEmaPriceUnsafe(bytes32)\":{\"details\":\"This function returns the same price as `getEmaPrice` in the case where the price is available. However, if the price is not recent this function returns the latest available price. The returned price can be from arbitrarily far in the past; this function makes no guarantees that the returned price is recent or useful for any particular application. Users of this function should check the `publishTime` in the price to ensure that the returned price is sufficiently recent for their application. If you are considering using this function, it may be safer / easier to use either `getEmaPrice` or `getEmaPriceNoOlderThan`.\",\"returns\":{\"price\":\"- please read the documentation of PythStructs.Price to understand how to use this safely.\"}},\"getPrice(bytes32)\":{\"details\":\"Reverts if the price has not been updated within the last `getValidTimePeriod()` seconds.\",\"params\":{\"id\":\"The Pyth Price Feed ID of which to fetch the price and confidence interval.\"},\"returns\":{\"price\":\"- please read the documentation of PythStructs.Price to understand how to use this safely.\"}},\"getPriceNoOlderThan(bytes32,uint256)\":{\"details\":\"This function is a sanity-checked version of `getPriceUnsafe` which is useful in applications that require a sufficiently-recent price. Reverts if the price wasn't updated sufficiently recently.\",\"returns\":{\"price\":\"- please read the documentation of PythStructs.Price to understand how to use this safely.\"}},\"getPriceUnsafe(bytes32)\":{\"details\":\"This function returns the most recent price update in this contract without any recency checks. This function is unsafe as the returned price update may be arbitrarily far in the past. Users of this function should check the `publishTime` in the price to ensure that the returned price is sufficiently recent for their application. If you are considering using this function, it may be safer / easier to use either `getPrice` or `getPriceNoOlderThan`.\",\"returns\":{\"price\":\"- please read the documentation of PythStructs.Price to understand how to use this safely.\"}},\"getUpdateFee(bytes[])\":{\"params\":{\"updateData\":\"Array of price update data.\"},\"returns\":{\"feeAmount\":\"The required fee in Wei.\"}},\"parsePriceFeedUpdates(bytes[],bytes32[],uint64,uint64)\":{\"details\":\"Reverts if the transferred fee is not sufficient or the updateData is invalid or there is no update for any of the given `priceIds` within the given time range.\",\"params\":{\"maxPublishTime\":\"maximum acceptable publishTime for the given `priceIds`.\",\"minPublishTime\":\"minimum acceptable publishTime for the given `priceIds`.\",\"priceIds\":\"Array of price ids.\",\"updateData\":\"Array of price update data.\"},\"returns\":{\"priceFeeds\":\"Array of the price feeds corresponding to the given `priceIds` (with the same order).\"}},\"updatePriceFeeds(bytes[])\":{\"details\":\"Reverts if the transferred fee is not sufficient or the updateData is invalid.\",\"params\":{\"updateData\":\"Array of price update data.\"}},\"updatePriceFeedsIfNecessary(bytes[],bytes32[],uint64[])\":{\"details\":\"Reverts if update is not needed or the transferred fee is not sufficient or the updateData is invalid.\",\"params\":{\"priceIds\":\"Array of price ids.\",\"publishTimes\":\"Array of publishTimes. `publishTimes[i]` corresponds to known `publishTime` of `priceIds[i]`\",\"updateData\":\"Array of price update data.\"}}},\"title\":\"Consume prices from the Pyth Network (https://pyth.network/).\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"getEmaPrice(bytes32)\":{\"notice\":\"Returns the exponentially-weighted moving average price and confidence interval.\"},\"getEmaPriceNoOlderThan(bytes32,uint256)\":{\"notice\":\"Returns the exponentially-weighted moving average price that is no older than `age` seconds of the current time.\"},\"getEmaPriceUnsafe(bytes32)\":{\"notice\":\"Returns the exponentially-weighted moving average price of a price feed without any sanity checks.\"},\"getPrice(bytes32)\":{\"notice\":\"Returns the price and confidence interval.\"},\"getPriceNoOlderThan(bytes32,uint256)\":{\"notice\":\"Returns the price that is no older than `age` seconds of the current time.\"},\"getPriceUnsafe(bytes32)\":{\"notice\":\"Returns the price of a price feed without any sanity checks.\"},\"getUpdateFee(bytes[])\":{\"notice\":\"Returns the required fee to update an array of price updates.\"},\"getValidTimePeriod()\":{\"notice\":\"Returns the period (in seconds) that a price feed is considered valid since its publish time\"},\"parsePriceFeedUpdates(bytes[],bytes32[],uint64,uint64)\":{\"notice\":\"Parse `updateData` and return price feeds of the given `priceIds` if they are all published within `minPublishTime` and `maxPublishTime`. You can use this method if you want to use a Pyth price at a fixed time and not the most recent price; otherwise, please consider using `updatePriceFeeds`. This method does not store the price updates on-chain. This method requires the caller to pay a fee in wei; the required fee can be computed by calling `getUpdateFee` with the length of the `updateData` array.\"},\"updatePriceFeeds(bytes[])\":{\"notice\":\"Update price feeds with given update messages. This method requires the caller to pay a fee in wei; the required fee can be computed by calling `getUpdateFee` with the length of the `updateData` array. Prices will be updated if they are more recent than the current stored prices. The call will succeed even if the update is not the most recent.\"},\"updatePriceFeedsIfNecessary(bytes[],bytes32[],uint64[])\":{\"notice\":\"Wrapper around updatePriceFeeds that rejects fast if a price update is not necessary. A price update is necessary if the current on-chain publishTime is older than the given publishTime. It relies solely on the given `publishTimes` for the price feeds and does not read the actual price update publish time within `updateData`. This method requires the caller to pay a fee in wei; the required fee can be computed by calling `getUpdateFee` with the length of the `updateData` array. `priceIds` and `publishTimes` are two arrays with the same size that correspond to senders known publishTime of each priceId when calling this method. If all of price feeds within `priceIds` have updated and have a newer or equal publish time than the given publish time, it will reject the transaction to save gas. Otherwise, it calls updatePriceFeeds method to update the prices.\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"node_modules/@pythnetwork/pyth-sdk-solidity/IPyth.sol\":\"IPyth\"},\"evmVersion\":\"paris\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[\":@chainlink/=node_modules/@chainlink/\",\":@ensdomains/=node_modules/@ensdomains/\",\":@openzeppelin/=node_modules/@openzeppelin/\",\":@pythnetwork/=node_modules/@pythnetwork/\",\":ds-test/=lib/forge-std/lib/ds-test/src/\",\":eth-gas-reporter/=node_modules/eth-gas-reporter/\",\":forge-std/=lib/forge-std/src/\",\":hardhat/=node_modules/hardhat/\"]},\"sources\":{\"node_modules/@pythnetwork/pyth-sdk-solidity/IPyth.sol\":{\"keccak256\":\"0x949c65c65fea0578c09a6fc068e09ed1165adede2c835984cefcb25d76de1de2\",\"license\":\"Apache-2.0\",\"urls\":[\"bzz-raw://4d7cb071e08e81bb8b113a928f4c2d2b3cdf950ad64c6c7003ea3d874163ca77\",\"dweb:/ipfs/QmRbQchPxRTBMHi7WzLb8XnMGzPDQcWhu7i2u5naUsCRoZ\"]},\"node_modules/@pythnetwork/pyth-sdk-solidity/IPythEvents.sol\":{\"keccak256\":\"0x048a35526c2e77d107d43ba336f1dcf31f64cef25ba429ae1f7a0fbc11c23320\",\"license\":\"Apache-2.0\",\"urls\":[\"bzz-raw://b75be4c3643b22305995aba71fc92146dbf51fa82d2f9728c515d7749b32dca3\",\"dweb:/ipfs/QmRby4XA9jJQGhxoJ16BTUDuU7BzLFfadbfTgBiQsDgNyZ\"]},\"node_modules/@pythnetwork/pyth-sdk-solidity/PythStructs.sol\":{\"keccak256\":\"0x95ff0a6d64517348ef604b8bcf246b561a9445d7e607b8f48491c617cfda9b65\",\"license\":\"Apache-2.0\",\"urls\":[\"bzz-raw://fb7f4ffe03be7379d3833c5946e38153de26aef4a4da0323a1ec603787de9eb7\",\"dweb:/ipfs/QmW4WkkLPGjDJrLrW4mYfxtFh8e9KAcPhrnNdxPQsfkS6t\"]}},\"version\":1}",
+  "metadata": {
+    "compiler": {
+      "version": "0.8.21+commit.d9974bed"
+    },
+    "language": "Solidity",
+    "output": {
+      "abi": [
+        {
+          "inputs": [
+            {
+              "internalType": "uint16",
+              "name": "chainId",
+              "type": "uint16",
+              "indexed": false
+            },
+            {
+              "internalType": "uint64",
+              "name": "sequenceNumber",
+              "type": "uint64",
+              "indexed": false
+            }
+          ],
+          "type": "event",
+          "name": "BatchPriceFeedUpdate",
+          "anonymous": false
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "id",
+              "type": "bytes32",
+              "indexed": true
+            },
+            {
+              "internalType": "uint64",
+              "name": "publishTime",
+              "type": "uint64",
+              "indexed": false
+            },
+            {
+              "internalType": "int64",
+              "name": "price",
+              "type": "int64",
+              "indexed": false
+            },
+            {
+              "internalType": "uint64",
+              "name": "conf",
+              "type": "uint64",
+              "indexed": false
+            }
+          ],
+          "type": "event",
+          "name": "PriceFeedUpdate",
+          "anonymous": false
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "id",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "getEmaPrice",
+          "outputs": [
+            {
+              "internalType": "struct PythStructs.Price",
+              "name": "price",
+              "type": "tuple",
+              "components": [
+                {
+                  "internalType": "int64",
+                  "name": "price",
+                  "type": "int64"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "conf",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "int32",
+                  "name": "expo",
+                  "type": "int32"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "publishTime",
+                  "type": "uint256"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "id",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint256",
+              "name": "age",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "getEmaPriceNoOlderThan",
+          "outputs": [
+            {
+              "internalType": "struct PythStructs.Price",
+              "name": "price",
+              "type": "tuple",
+              "components": [
+                {
+                  "internalType": "int64",
+                  "name": "price",
+                  "type": "int64"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "conf",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "int32",
+                  "name": "expo",
+                  "type": "int32"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "publishTime",
+                  "type": "uint256"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "id",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "getEmaPriceUnsafe",
+          "outputs": [
+            {
+              "internalType": "struct PythStructs.Price",
+              "name": "price",
+              "type": "tuple",
+              "components": [
+                {
+                  "internalType": "int64",
+                  "name": "price",
+                  "type": "int64"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "conf",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "int32",
+                  "name": "expo",
+                  "type": "int32"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "publishTime",
+                  "type": "uint256"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "id",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "getPrice",
+          "outputs": [
+            {
+              "internalType": "struct PythStructs.Price",
+              "name": "price",
+              "type": "tuple",
+              "components": [
+                {
+                  "internalType": "int64",
+                  "name": "price",
+                  "type": "int64"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "conf",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "int32",
+                  "name": "expo",
+                  "type": "int32"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "publishTime",
+                  "type": "uint256"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "id",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint256",
+              "name": "age",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "getPriceNoOlderThan",
+          "outputs": [
+            {
+              "internalType": "struct PythStructs.Price",
+              "name": "price",
+              "type": "tuple",
+              "components": [
+                {
+                  "internalType": "int64",
+                  "name": "price",
+                  "type": "int64"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "conf",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "int32",
+                  "name": "expo",
+                  "type": "int32"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "publishTime",
+                  "type": "uint256"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "id",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "getPriceUnsafe",
+          "outputs": [
+            {
+              "internalType": "struct PythStructs.Price",
+              "name": "price",
+              "type": "tuple",
+              "components": [
+                {
+                  "internalType": "int64",
+                  "name": "price",
+                  "type": "int64"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "conf",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "int32",
+                  "name": "expo",
+                  "type": "int32"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "publishTime",
+                  "type": "uint256"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes[]",
+              "name": "updateData",
+              "type": "bytes[]"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "getUpdateFee",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "feeAmount",
+              "type": "uint256"
+            }
+          ]
+        },
+        {
+          "inputs": [],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "getValidTimePeriod",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "validTimePeriod",
+              "type": "uint256"
+            }
+          ]
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes[]",
+              "name": "updateData",
+              "type": "bytes[]"
+            },
+            {
+              "internalType": "bytes32[]",
+              "name": "priceIds",
+              "type": "bytes32[]"
+            },
+            {
+              "internalType": "uint64",
+              "name": "minPublishTime",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "maxPublishTime",
+              "type": "uint64"
+            }
+          ],
+          "stateMutability": "payable",
+          "type": "function",
+          "name": "parsePriceFeedUpdates",
+          "outputs": [
+            {
+              "internalType": "struct PythStructs.PriceFeed[]",
+              "name": "priceFeeds",
+              "type": "tuple[]",
+              "components": [
+                {
+                  "internalType": "bytes32",
+                  "name": "id",
+                  "type": "bytes32"
+                },
+                {
+                  "internalType": "struct PythStructs.Price",
+                  "name": "price",
+                  "type": "tuple",
+                  "components": [
+                    {
+                      "internalType": "int64",
+                      "name": "price",
+                      "type": "int64"
+                    },
+                    {
+                      "internalType": "uint64",
+                      "name": "conf",
+                      "type": "uint64"
+                    },
+                    {
+                      "internalType": "int32",
+                      "name": "expo",
+                      "type": "int32"
+                    },
+                    {
+                      "internalType": "uint256",
+                      "name": "publishTime",
+                      "type": "uint256"
+                    }
+                  ]
+                },
+                {
+                  "internalType": "struct PythStructs.Price",
+                  "name": "emaPrice",
+                  "type": "tuple",
+                  "components": [
+                    {
+                      "internalType": "int64",
+                      "name": "price",
+                      "type": "int64"
+                    },
+                    {
+                      "internalType": "uint64",
+                      "name": "conf",
+                      "type": "uint64"
+                    },
+                    {
+                      "internalType": "int32",
+                      "name": "expo",
+                      "type": "int32"
+                    },
+                    {
+                      "internalType": "uint256",
+                      "name": "publishTime",
+                      "type": "uint256"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes[]",
+              "name": "updateData",
+              "type": "bytes[]"
+            }
+          ],
+          "stateMutability": "payable",
+          "type": "function",
+          "name": "updatePriceFeeds"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes[]",
+              "name": "updateData",
+              "type": "bytes[]"
+            },
+            {
+              "internalType": "bytes32[]",
+              "name": "priceIds",
+              "type": "bytes32[]"
+            },
+            {
+              "internalType": "uint64[]",
+              "name": "publishTimes",
+              "type": "uint64[]"
+            }
+          ],
+          "stateMutability": "payable",
+          "type": "function",
+          "name": "updatePriceFeedsIfNecessary"
+        }
+      ],
+      "devdoc": {
+        "kind": "dev",
+        "methods": {
+          "getEmaPrice(bytes32)": {
+            "details": "Reverts if the EMA price is not available.",
+            "params": {
+              "id": "The Pyth Price Feed ID of which to fetch the EMA price and confidence interval."
+            },
+            "returns": {
+              "price": "- please read the documentation of PythStructs.Price to understand how to use this safely."
+            }
+          },
+          "getEmaPriceNoOlderThan(bytes32,uint256)": {
+            "details": "This function is a sanity-checked version of `getEmaPriceUnsafe` which is useful in applications that require a sufficiently-recent price. Reverts if the price wasn't updated sufficiently recently.",
+            "returns": {
+              "price": "- please read the documentation of PythStructs.Price to understand how to use this safely."
+            }
+          },
+          "getEmaPriceUnsafe(bytes32)": {
+            "details": "This function returns the same price as `getEmaPrice` in the case where the price is available. However, if the price is not recent this function returns the latest available price. The returned price can be from arbitrarily far in the past; this function makes no guarantees that the returned price is recent or useful for any particular application. Users of this function should check the `publishTime` in the price to ensure that the returned price is sufficiently recent for their application. If you are considering using this function, it may be safer / easier to use either `getEmaPrice` or `getEmaPriceNoOlderThan`.",
+            "returns": {
+              "price": "- please read the documentation of PythStructs.Price to understand how to use this safely."
+            }
+          },
+          "getPrice(bytes32)": {
+            "details": "Reverts if the price has not been updated within the last `getValidTimePeriod()` seconds.",
+            "params": {
+              "id": "The Pyth Price Feed ID of which to fetch the price and confidence interval."
+            },
+            "returns": {
+              "price": "- please read the documentation of PythStructs.Price to understand how to use this safely."
+            }
+          },
+          "getPriceNoOlderThan(bytes32,uint256)": {
+            "details": "This function is a sanity-checked version of `getPriceUnsafe` which is useful in applications that require a sufficiently-recent price. Reverts if the price wasn't updated sufficiently recently.",
+            "returns": {
+              "price": "- please read the documentation of PythStructs.Price to understand how to use this safely."
+            }
+          },
+          "getPriceUnsafe(bytes32)": {
+            "details": "This function returns the most recent price update in this contract without any recency checks. This function is unsafe as the returned price update may be arbitrarily far in the past. Users of this function should check the `publishTime` in the price to ensure that the returned price is sufficiently recent for their application. If you are considering using this function, it may be safer / easier to use either `getPrice` or `getPriceNoOlderThan`.",
+            "returns": {
+              "price": "- please read the documentation of PythStructs.Price to understand how to use this safely."
+            }
+          },
+          "getUpdateFee(bytes[])": {
+            "params": {
+              "updateData": "Array of price update data."
+            },
+            "returns": {
+              "feeAmount": "The required fee in Wei."
+            }
+          },
+          "parsePriceFeedUpdates(bytes[],bytes32[],uint64,uint64)": {
+            "details": "Reverts if the transferred fee is not sufficient or the updateData is invalid or there is no update for any of the given `priceIds` within the given time range.",
+            "params": {
+              "maxPublishTime": "maximum acceptable publishTime for the given `priceIds`.",
+              "minPublishTime": "minimum acceptable publishTime for the given `priceIds`.",
+              "priceIds": "Array of price ids.",
+              "updateData": "Array of price update data."
+            },
+            "returns": {
+              "priceFeeds": "Array of the price feeds corresponding to the given `priceIds` (with the same order)."
+            }
+          },
+          "updatePriceFeeds(bytes[])": {
+            "details": "Reverts if the transferred fee is not sufficient or the updateData is invalid.",
+            "params": {
+              "updateData": "Array of price update data."
+            }
+          },
+          "updatePriceFeedsIfNecessary(bytes[],bytes32[],uint64[])": {
+            "details": "Reverts if update is not needed or the transferred fee is not sufficient or the updateData is invalid.",
+            "params": {
+              "priceIds": "Array of price ids.",
+              "publishTimes": "Array of publishTimes. `publishTimes[i]` corresponds to known `publishTime` of `priceIds[i]`",
+              "updateData": "Array of price update data."
+            }
+          }
+        },
+        "version": 1
+      },
+      "userdoc": {
+        "kind": "user",
+        "methods": {
+          "getEmaPrice(bytes32)": {
+            "notice": "Returns the exponentially-weighted moving average price and confidence interval."
+          },
+          "getEmaPriceNoOlderThan(bytes32,uint256)": {
+            "notice": "Returns the exponentially-weighted moving average price that is no older than `age` seconds of the current time."
+          },
+          "getEmaPriceUnsafe(bytes32)": {
+            "notice": "Returns the exponentially-weighted moving average price of a price feed without any sanity checks."
+          },
+          "getPrice(bytes32)": {
+            "notice": "Returns the price and confidence interval."
+          },
+          "getPriceNoOlderThan(bytes32,uint256)": {
+            "notice": "Returns the price that is no older than `age` seconds of the current time."
+          },
+          "getPriceUnsafe(bytes32)": {
+            "notice": "Returns the price of a price feed without any sanity checks."
+          },
+          "getUpdateFee(bytes[])": {
+            "notice": "Returns the required fee to update an array of price updates."
+          },
+          "getValidTimePeriod()": {
+            "notice": "Returns the period (in seconds) that a price feed is considered valid since its publish time"
+          },
+          "parsePriceFeedUpdates(bytes[],bytes32[],uint64,uint64)": {
+            "notice": "Parse `updateData` and return price feeds of the given `priceIds` if they are all published within `minPublishTime` and `maxPublishTime`. You can use this method if you want to use a Pyth price at a fixed time and not the most recent price; otherwise, please consider using `updatePriceFeeds`. This method does not store the price updates on-chain. This method requires the caller to pay a fee in wei; the required fee can be computed by calling `getUpdateFee` with the length of the `updateData` array."
+          },
+          "updatePriceFeeds(bytes[])": {
+            "notice": "Update price feeds with given update messages. This method requires the caller to pay a fee in wei; the required fee can be computed by calling `getUpdateFee` with the length of the `updateData` array. Prices will be updated if they are more recent than the current stored prices. The call will succeed even if the update is not the most recent."
+          },
+          "updatePriceFeedsIfNecessary(bytes[],bytes32[],uint64[])": {
+            "notice": "Wrapper around updatePriceFeeds that rejects fast if a price update is not necessary. A price update is necessary if the current on-chain publishTime is older than the given publishTime. It relies solely on the given `publishTimes` for the price feeds and does not read the actual price update publish time within `updateData`. This method requires the caller to pay a fee in wei; the required fee can be computed by calling `getUpdateFee` with the length of the `updateData` array. `priceIds` and `publishTimes` are two arrays with the same size that correspond to senders known publishTime of each priceId when calling this method. If all of price feeds within `priceIds` have updated and have a newer or equal publish time than the given publish time, it will reject the transaction to save gas. Otherwise, it calls updatePriceFeeds method to update the prices."
+          }
+        },
+        "version": 1
+      }
+    },
+    "settings": {
+      "remappings": [
+        "@chainlink/=node_modules/@chainlink/",
+        "@ensdomains/=node_modules/@ensdomains/",
+        "@openzeppelin/=node_modules/@openzeppelin/",
+        "@pythnetwork/=node_modules/@pythnetwork/",
+        "ds-test/=lib/forge-std/lib/ds-test/src/",
+        "eth-gas-reporter/=node_modules/eth-gas-reporter/",
+        "forge-std/=lib/forge-std/src/",
+        "hardhat/=node_modules/hardhat/"
+      ],
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "metadata": {
+        "bytecodeHash": "ipfs"
+      },
+      "compilationTarget": {
+        "node_modules/@pythnetwork/pyth-sdk-solidity/IPyth.sol": "IPyth"
+      },
+      "libraries": {}
+    },
+    "sources": {
+      "node_modules/@pythnetwork/pyth-sdk-solidity/IPyth.sol": {
+        "keccak256": "0x949c65c65fea0578c09a6fc068e09ed1165adede2c835984cefcb25d76de1de2",
+        "urls": [
+          "bzz-raw://4d7cb071e08e81bb8b113a928f4c2d2b3cdf950ad64c6c7003ea3d874163ca77",
+          "dweb:/ipfs/QmRbQchPxRTBMHi7WzLb8XnMGzPDQcWhu7i2u5naUsCRoZ"
+        ],
+        "license": "Apache-2.0"
+      },
+      "node_modules/@pythnetwork/pyth-sdk-solidity/IPythEvents.sol": {
+        "keccak256": "0x048a35526c2e77d107d43ba336f1dcf31f64cef25ba429ae1f7a0fbc11c23320",
+        "urls": [
+          "bzz-raw://b75be4c3643b22305995aba71fc92146dbf51fa82d2f9728c515d7749b32dca3",
+          "dweb:/ipfs/QmRby4XA9jJQGhxoJ16BTUDuU7BzLFfadbfTgBiQsDgNyZ"
+        ],
+        "license": "Apache-2.0"
+      },
+      "node_modules/@pythnetwork/pyth-sdk-solidity/PythStructs.sol": {
+        "keccak256": "0x95ff0a6d64517348ef604b8bcf246b561a9445d7e607b8f48491c617cfda9b65",
+        "urls": [
+          "bzz-raw://fb7f4ffe03be7379d3833c5946e38153de26aef4a4da0323a1ec603787de9eb7",
+          "dweb:/ipfs/QmW4WkkLPGjDJrLrW4mYfxtFh8e9KAcPhrnNdxPQsfkS6t"
+        ],
+        "license": "Apache-2.0"
+      }
+    },
+    "version": 1
+  },
+  "ast": {
+    "absolutePath": "node_modules/@pythnetwork/pyth-sdk-solidity/IPyth.sol",
+    "id": 6796,
+    "exportedSymbols": {
+      "IPyth": [
+        6795
+      ],
+      "IPythEvents": [
+        6817
+      ],
+      "PythStructs": [
+        6838
+      ]
+    },
+    "nodeType": "SourceUnit",
+    "src": "39:8313:22",
+    "nodes": [
+      {
+        "id": 6678,
+        "nodeType": "PragmaDirective",
+        "src": "39:23:22",
+        "nodes": [],
+        "literals": [
+          "solidity",
+          "^",
+          "0.8",
+          ".0"
+        ]
+      },
+      {
+        "id": 6679,
+        "nodeType": "ImportDirective",
+        "src": "64:27:22",
+        "nodes": [],
+        "absolutePath": "node_modules/@pythnetwork/pyth-sdk-solidity/PythStructs.sol",
+        "file": "./PythStructs.sol",
+        "nameLocation": "-1:-1:-1",
+        "scope": 6796,
+        "sourceUnit": 6839,
+        "symbolAliases": [],
+        "unitAlias": ""
+      },
+      {
+        "id": 6680,
+        "nodeType": "ImportDirective",
+        "src": "92:27:22",
+        "nodes": [],
+        "absolutePath": "node_modules/@pythnetwork/pyth-sdk-solidity/IPythEvents.sol",
+        "file": "./IPythEvents.sol",
+        "nameLocation": "-1:-1:-1",
+        "scope": 6796,
+        "sourceUnit": 6818,
+        "symbolAliases": [],
+        "unitAlias": ""
+      },
+      {
+        "id": 6795,
+        "nodeType": "ContractDefinition",
+        "src": "354:7997:22",
+        "nodes": [
+          {
+            "id": 6689,
+            "nodeType": "FunctionDefinition",
+            "src": "500:75:22",
+            "nodes": [],
+            "documentation": {
+              "id": 6684,
+              "nodeType": "StructuredDocumentation",
+              "src": "391:104:22",
+              "text": "@notice Returns the period (in seconds) that a price feed is considered valid since its publish time"
+            },
+            "functionSelector": "e18910a3",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "getValidTimePeriod",
+            "nameLocation": "509:18:22",
+            "parameters": {
+              "id": 6685,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "527:2:22"
+            },
+            "returnParameters": {
+              "id": 6688,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6687,
+                  "mutability": "mutable",
+                  "name": "validTimePeriod",
+                  "nameLocation": "558:15:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6689,
+                  "src": "553:20:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 6686,
+                    "name": "uint",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "553:4:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "552:22:22"
+            },
+            "scope": 6795,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 6698,
+            "nodeType": "FunctionDefinition",
+            "src": "950:99:22",
+            "nodes": [],
+            "documentation": {
+              "id": 6690,
+              "nodeType": "StructuredDocumentation",
+              "src": "581:364:22",
+              "text": "@notice Returns the price and confidence interval.\n @dev Reverts if the price has not been updated within the last `getValidTimePeriod()` seconds.\n @param id The Pyth Price Feed ID of which to fetch the price and confidence interval.\n @return price - please read the documentation of PythStructs.Price to understand how to use this safely."
+            },
+            "functionSelector": "31d98b3f",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "getPrice",
+            "nameLocation": "959:8:22",
+            "parameters": {
+              "id": 6693,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6692,
+                  "mutability": "mutable",
+                  "name": "id",
+                  "nameLocation": "985:2:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6698,
+                  "src": "977:10:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 6691,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "977:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "967:26:22"
+            },
+            "returnParameters": {
+              "id": 6697,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6696,
+                  "mutability": "mutable",
+                  "name": "price",
+                  "nameLocation": "1042:5:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6698,
+                  "src": "1017:30:22",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_Price_$6828_memory_ptr",
+                    "typeString": "struct PythStructs.Price"
+                  },
+                  "typeName": {
+                    "id": 6695,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 6694,
+                      "name": "PythStructs.Price",
+                      "nameLocations": [
+                        "1017:11:22",
+                        "1029:5:22"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 6828,
+                      "src": "1017:17:22"
+                    },
+                    "referencedDeclaration": 6828,
+                    "src": "1017:17:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_Price_$6828_storage_ptr",
+                      "typeString": "struct PythStructs.Price"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1016:32:22"
+            },
+            "scope": 6795,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 6707,
+            "nodeType": "FunctionDefinition",
+            "src": "1419:102:22",
+            "nodes": [],
+            "documentation": {
+              "id": 6699,
+              "nodeType": "StructuredDocumentation",
+              "src": "1055:359:22",
+              "text": "@notice Returns the exponentially-weighted moving average price and confidence interval.\n @dev Reverts if the EMA price is not available.\n @param id The Pyth Price Feed ID of which to fetch the EMA price and confidence interval.\n @return price - please read the documentation of PythStructs.Price to understand how to use this safely."
+            },
+            "functionSelector": "b5dcc911",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "getEmaPrice",
+            "nameLocation": "1428:11:22",
+            "parameters": {
+              "id": 6702,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6701,
+                  "mutability": "mutable",
+                  "name": "id",
+                  "nameLocation": "1457:2:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6707,
+                  "src": "1449:10:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 6700,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1449:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1439:26:22"
+            },
+            "returnParameters": {
+              "id": 6706,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6705,
+                  "mutability": "mutable",
+                  "name": "price",
+                  "nameLocation": "1514:5:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6707,
+                  "src": "1489:30:22",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_Price_$6828_memory_ptr",
+                    "typeString": "struct PythStructs.Price"
+                  },
+                  "typeName": {
+                    "id": 6704,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 6703,
+                      "name": "PythStructs.Price",
+                      "nameLocations": [
+                        "1489:11:22",
+                        "1501:5:22"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 6828,
+                      "src": "1489:17:22"
+                    },
+                    "referencedDeclaration": 6828,
+                    "src": "1489:17:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_Price_$6828_storage_ptr",
+                      "typeString": "struct PythStructs.Price"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1488:32:22"
+            },
+            "scope": 6795,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 6716,
+            "nodeType": "FunctionDefinition",
+            "src": "2222:105:22",
+            "nodes": [],
+            "documentation": {
+              "id": 6708,
+              "nodeType": "StructuredDocumentation",
+              "src": "1527:690:22",
+              "text": "@notice Returns the price of a price feed without any sanity checks.\n @dev This function returns the most recent price update in this contract without any recency checks.\n This function is unsafe as the returned price update may be arbitrarily far in the past.\n Users of this function should check the `publishTime` in the price to ensure that the returned price is\n sufficiently recent for their application. If you are considering using this function, it may be\n safer / easier to use either `getPrice` or `getPriceNoOlderThan`.\n @return price - please read the documentation of PythStructs.Price to understand how to use this safely."
+            },
+            "functionSelector": "96834ad3",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "getPriceUnsafe",
+            "nameLocation": "2231:14:22",
+            "parameters": {
+              "id": 6711,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6710,
+                  "mutability": "mutable",
+                  "name": "id",
+                  "nameLocation": "2263:2:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6716,
+                  "src": "2255:10:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 6709,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2255:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "2245:26:22"
+            },
+            "returnParameters": {
+              "id": 6715,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6714,
+                  "mutability": "mutable",
+                  "name": "price",
+                  "nameLocation": "2320:5:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6716,
+                  "src": "2295:30:22",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_Price_$6828_memory_ptr",
+                    "typeString": "struct PythStructs.Price"
+                  },
+                  "typeName": {
+                    "id": 6713,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 6712,
+                      "name": "PythStructs.Price",
+                      "nameLocations": [
+                        "2295:11:22",
+                        "2307:5:22"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 6828,
+                      "src": "2295:17:22"
+                    },
+                    "referencedDeclaration": 6828,
+                    "src": "2295:17:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_Price_$6828_storage_ptr",
+                      "typeString": "struct PythStructs.Price"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "2294:32:22"
+            },
+            "scope": 6795,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 6727,
+            "nodeType": "FunctionDefinition",
+            "src": "2761:128:22",
+            "nodes": [],
+            "documentation": {
+              "id": 6717,
+              "nodeType": "StructuredDocumentation",
+              "src": "2333:423:22",
+              "text": "@notice Returns the price that is no older than `age` seconds of the current time.\n @dev This function is a sanity-checked version of `getPriceUnsafe` which is useful in\n applications that require a sufficiently-recent price. Reverts if the price wasn't updated sufficiently\n recently.\n @return price - please read the documentation of PythStructs.Price to understand how to use this safely."
+            },
+            "functionSelector": "a4ae35e0",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "getPriceNoOlderThan",
+            "nameLocation": "2770:19:22",
+            "parameters": {
+              "id": 6722,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6719,
+                  "mutability": "mutable",
+                  "name": "id",
+                  "nameLocation": "2807:2:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6727,
+                  "src": "2799:10:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 6718,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2799:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 6721,
+                  "mutability": "mutable",
+                  "name": "age",
+                  "nameLocation": "2824:3:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6727,
+                  "src": "2819:8:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 6720,
+                    "name": "uint",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2819:4:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "2789:44:22"
+            },
+            "returnParameters": {
+              "id": 6726,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6725,
+                  "mutability": "mutable",
+                  "name": "price",
+                  "nameLocation": "2882:5:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6727,
+                  "src": "2857:30:22",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_Price_$6828_memory_ptr",
+                    "typeString": "struct PythStructs.Price"
+                  },
+                  "typeName": {
+                    "id": 6724,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 6723,
+                      "name": "PythStructs.Price",
+                      "nameLocations": [
+                        "2857:11:22",
+                        "2869:5:22"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 6828,
+                      "src": "2857:17:22"
+                    },
+                    "referencedDeclaration": 6828,
+                    "src": "2857:17:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_Price_$6828_storage_ptr",
+                      "typeString": "struct PythStructs.Price"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "2856:32:22"
+            },
+            "scope": 6795,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 6736,
+            "nodeType": "FunctionDefinition",
+            "src": "3825:108:22",
+            "nodes": [],
+            "documentation": {
+              "id": 6728,
+              "nodeType": "StructuredDocumentation",
+              "src": "2895:925:22",
+              "text": "@notice Returns the exponentially-weighted moving average price of a price feed without any sanity checks.\n @dev This function returns the same price as `getEmaPrice` in the case where the price is available.\n However, if the price is not recent this function returns the latest available price.\n The returned price can be from arbitrarily far in the past; this function makes no guarantees that\n the returned price is recent or useful for any particular application.\n Users of this function should check the `publishTime` in the price to ensure that the returned price is\n sufficiently recent for their application. If you are considering using this function, it may be\n safer / easier to use either `getEmaPrice` or `getEmaPriceNoOlderThan`.\n @return price - please read the documentation of PythStructs.Price to understand how to use this safely."
+            },
+            "functionSelector": "9474f45b",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "getEmaPriceUnsafe",
+            "nameLocation": "3834:17:22",
+            "parameters": {
+              "id": 6731,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6730,
+                  "mutability": "mutable",
+                  "name": "id",
+                  "nameLocation": "3869:2:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6736,
+                  "src": "3861:10:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 6729,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "3861:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "3851:26:22"
+            },
+            "returnParameters": {
+              "id": 6735,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6734,
+                  "mutability": "mutable",
+                  "name": "price",
+                  "nameLocation": "3926:5:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6736,
+                  "src": "3901:30:22",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_Price_$6828_memory_ptr",
+                    "typeString": "struct PythStructs.Price"
+                  },
+                  "typeName": {
+                    "id": 6733,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 6732,
+                      "name": "PythStructs.Price",
+                      "nameLocations": [
+                        "3901:11:22",
+                        "3913:5:22"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 6828,
+                      "src": "3901:17:22"
+                    },
+                    "referencedDeclaration": 6828,
+                    "src": "3901:17:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_Price_$6828_storage_ptr",
+                      "typeString": "struct PythStructs.Price"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "3900:32:22"
+            },
+            "scope": 6795,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 6747,
+            "nodeType": "FunctionDefinition",
+            "src": "4416:131:22",
+            "nodes": [],
+            "documentation": {
+              "id": 6737,
+              "nodeType": "StructuredDocumentation",
+              "src": "3939:472:22",
+              "text": "@notice Returns the exponentially-weighted moving average price that is no older than `age` seconds\n of the current time.\n @dev This function is a sanity-checked version of `getEmaPriceUnsafe` which is useful in\n applications that require a sufficiently-recent price. Reverts if the price wasn't updated sufficiently\n recently.\n @return price - please read the documentation of PythStructs.Price to understand how to use this safely."
+            },
+            "functionSelector": "711a2e28",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "getEmaPriceNoOlderThan",
+            "nameLocation": "4425:22:22",
+            "parameters": {
+              "id": 6742,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6739,
+                  "mutability": "mutable",
+                  "name": "id",
+                  "nameLocation": "4465:2:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6747,
+                  "src": "4457:10:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 6738,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4457:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 6741,
+                  "mutability": "mutable",
+                  "name": "age",
+                  "nameLocation": "4482:3:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6747,
+                  "src": "4477:8:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 6740,
+                    "name": "uint",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "4477:4:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "4447:44:22"
+            },
+            "returnParameters": {
+              "id": 6746,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6745,
+                  "mutability": "mutable",
+                  "name": "price",
+                  "nameLocation": "4540:5:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6747,
+                  "src": "4515:30:22",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_Price_$6828_memory_ptr",
+                    "typeString": "struct PythStructs.Price"
+                  },
+                  "typeName": {
+                    "id": 6744,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 6743,
+                      "name": "PythStructs.Price",
+                      "nameLocations": [
+                        "4515:11:22",
+                        "4527:5:22"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 6828,
+                      "src": "4515:17:22"
+                    },
+                    "referencedDeclaration": 6828,
+                    "src": "4515:17:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_Price_$6828_storage_ptr",
+                      "typeString": "struct PythStructs.Price"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "4514:32:22"
+            },
+            "scope": 6795,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 6754,
+            "nodeType": "FunctionDefinition",
+            "src": "5093:72:22",
+            "nodes": [],
+            "documentation": {
+              "id": 6748,
+              "nodeType": "StructuredDocumentation",
+              "src": "4553:535:22",
+              "text": "@notice Update price feeds with given update messages.\n This method requires the caller to pay a fee in wei; the required fee can be computed by calling\n `getUpdateFee` with the length of the `updateData` array.\n Prices will be updated if they are more recent than the current stored prices.\n The call will succeed even if the update is not the most recent.\n @dev Reverts if the transferred fee is not sufficient or the updateData is invalid.\n @param updateData Array of price update data."
+            },
+            "functionSelector": "ef9e5e28",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "updatePriceFeeds",
+            "nameLocation": "5102:16:22",
+            "parameters": {
+              "id": 6752,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6751,
+                  "mutability": "mutable",
+                  "name": "updateData",
+                  "nameLocation": "5136:10:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6754,
+                  "src": "5119:27:22",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_bytes_calldata_ptr_$dyn_calldata_ptr",
+                    "typeString": "bytes[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 6749,
+                      "name": "bytes",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "5119:5:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bytes_storage_ptr",
+                        "typeString": "bytes"
+                      }
+                    },
+                    "id": 6750,
+                    "nodeType": "ArrayTypeName",
+                    "src": "5119:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_bytes_storage_$dyn_storage_ptr",
+                      "typeString": "bytes[]"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "5118:29:22"
+            },
+            "returnParameters": {
+              "id": 6753,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "5164:0:22"
+            },
+            "scope": 6795,
+            "stateMutability": "payable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 6767,
+            "nodeType": "FunctionDefinition",
+            "src": "6475:174:22",
+            "nodes": [],
+            "documentation": {
+              "id": 6755,
+              "nodeType": "StructuredDocumentation",
+              "src": "5171:1299:22",
+              "text": "@notice Wrapper around updatePriceFeeds that rejects fast if a price update is not necessary. A price update is\n necessary if the current on-chain publishTime is older than the given publishTime. It relies solely on the\n given `publishTimes` for the price feeds and does not read the actual price update publish time within `updateData`.\n This method requires the caller to pay a fee in wei; the required fee can be computed by calling\n `getUpdateFee` with the length of the `updateData` array.\n `priceIds` and `publishTimes` are two arrays with the same size that correspond to senders known publishTime\n of each priceId when calling this method. If all of price feeds within `priceIds` have updated and have\n a newer or equal publish time than the given publish time, it will reject the transaction to save gas.\n Otherwise, it calls updatePriceFeeds method to update the prices.\n @dev Reverts if update is not needed or the transferred fee is not sufficient or the updateData is invalid.\n @param updateData Array of price update data.\n @param priceIds Array of price ids.\n @param publishTimes Array of publishTimes. `publishTimes[i]` corresponds to known `publishTime` of `priceIds[i]`"
+            },
+            "functionSelector": "b9256d28",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "updatePriceFeedsIfNecessary",
+            "nameLocation": "6484:27:22",
+            "parameters": {
+              "id": 6765,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6758,
+                  "mutability": "mutable",
+                  "name": "updateData",
+                  "nameLocation": "6538:10:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6767,
+                  "src": "6521:27:22",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_bytes_calldata_ptr_$dyn_calldata_ptr",
+                    "typeString": "bytes[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 6756,
+                      "name": "bytes",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "6521:5:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bytes_storage_ptr",
+                        "typeString": "bytes"
+                      }
+                    },
+                    "id": 6757,
+                    "nodeType": "ArrayTypeName",
+                    "src": "6521:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_bytes_storage_$dyn_storage_ptr",
+                      "typeString": "bytes[]"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 6761,
+                  "mutability": "mutable",
+                  "name": "priceIds",
+                  "nameLocation": "6577:8:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6767,
+                  "src": "6558:27:22",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_bytes32_$dyn_calldata_ptr",
+                    "typeString": "bytes32[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 6759,
+                      "name": "bytes32",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "6558:7:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bytes32",
+                        "typeString": "bytes32"
+                      }
+                    },
+                    "id": 6760,
+                    "nodeType": "ArrayTypeName",
+                    "src": "6558:9:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_bytes32_$dyn_storage_ptr",
+                      "typeString": "bytes32[]"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 6764,
+                  "mutability": "mutable",
+                  "name": "publishTimes",
+                  "nameLocation": "6613:12:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6767,
+                  "src": "6595:30:22",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_uint64_$dyn_calldata_ptr",
+                    "typeString": "uint64[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 6762,
+                      "name": "uint64",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "6595:6:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint64",
+                        "typeString": "uint64"
+                      }
+                    },
+                    "id": 6763,
+                    "nodeType": "ArrayTypeName",
+                    "src": "6595:8:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_uint64_$dyn_storage_ptr",
+                      "typeString": "uint64[]"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "6511:120:22"
+            },
+            "returnParameters": {
+              "id": 6766,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "6648:0:22"
+            },
+            "scope": 6795,
+            "stateMutability": "payable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 6776,
+            "nodeType": "FunctionDefinition",
+            "src": "6838:104:22",
+            "nodes": [],
+            "documentation": {
+              "id": 6768,
+              "nodeType": "StructuredDocumentation",
+              "src": "6655:178:22",
+              "text": "@notice Returns the required fee to update an array of price updates.\n @param updateData Array of price update data.\n @return feeAmount The required fee in Wei."
+            },
+            "functionSelector": "d47eed45",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "getUpdateFee",
+            "nameLocation": "6847:12:22",
+            "parameters": {
+              "id": 6772,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6771,
+                  "mutability": "mutable",
+                  "name": "updateData",
+                  "nameLocation": "6886:10:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6776,
+                  "src": "6869:27:22",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_bytes_calldata_ptr_$dyn_calldata_ptr",
+                    "typeString": "bytes[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 6769,
+                      "name": "bytes",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "6869:5:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bytes_storage_ptr",
+                        "typeString": "bytes"
+                      }
+                    },
+                    "id": 6770,
+                    "nodeType": "ArrayTypeName",
+                    "src": "6869:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_bytes_storage_$dyn_storage_ptr",
+                      "typeString": "bytes[]"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "6859:43:22"
+            },
+            "returnParameters": {
+              "id": 6775,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6774,
+                  "mutability": "mutable",
+                  "name": "feeAmount",
+                  "nameLocation": "6931:9:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6776,
+                  "src": "6926:14:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 6773,
+                    "name": "uint",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "6926:4:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "6925:16:22"
+            },
+            "scope": 6795,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 6794,
+            "nodeType": "FunctionDefinition",
+            "src": "8107:242:22",
+            "nodes": [],
+            "documentation": {
+              "id": 6777,
+              "nodeType": "StructuredDocumentation",
+              "src": "6948:1154:22",
+              "text": "@notice Parse `updateData` and return price feeds of the given `priceIds` if they are all published\n within `minPublishTime` and `maxPublishTime`.\n You can use this method if you want to use a Pyth price at a fixed time and not the most recent price;\n otherwise, please consider using `updatePriceFeeds`. This method does not store the price updates on-chain.\n This method requires the caller to pay a fee in wei; the required fee can be computed by calling\n `getUpdateFee` with the length of the `updateData` array.\n @dev Reverts if the transferred fee is not sufficient or the updateData is invalid or there is\n no update for any of the given `priceIds` within the given time range.\n @param updateData Array of price update data.\n @param priceIds Array of price ids.\n @param minPublishTime minimum acceptable publishTime for the given `priceIds`.\n @param maxPublishTime maximum acceptable publishTime for the given `priceIds`.\n @return priceFeeds Array of the price feeds corresponding to the given `priceIds` (with the same order)."
+            },
+            "functionSelector": "4716e9c5",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "parsePriceFeedUpdates",
+            "nameLocation": "8116:21:22",
+            "parameters": {
+              "id": 6788,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6780,
+                  "mutability": "mutable",
+                  "name": "updateData",
+                  "nameLocation": "8164:10:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6794,
+                  "src": "8147:27:22",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_bytes_calldata_ptr_$dyn_calldata_ptr",
+                    "typeString": "bytes[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 6778,
+                      "name": "bytes",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "8147:5:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bytes_storage_ptr",
+                        "typeString": "bytes"
+                      }
+                    },
+                    "id": 6779,
+                    "nodeType": "ArrayTypeName",
+                    "src": "8147:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_bytes_storage_$dyn_storage_ptr",
+                      "typeString": "bytes[]"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 6783,
+                  "mutability": "mutable",
+                  "name": "priceIds",
+                  "nameLocation": "8203:8:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6794,
+                  "src": "8184:27:22",
+                  "stateVariable": false,
+                  "storageLocation": "calldata",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_bytes32_$dyn_calldata_ptr",
+                    "typeString": "bytes32[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 6781,
+                      "name": "bytes32",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "8184:7:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bytes32",
+                        "typeString": "bytes32"
+                      }
+                    },
+                    "id": 6782,
+                    "nodeType": "ArrayTypeName",
+                    "src": "8184:9:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_bytes32_$dyn_storage_ptr",
+                      "typeString": "bytes32[]"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 6785,
+                  "mutability": "mutable",
+                  "name": "minPublishTime",
+                  "nameLocation": "8228:14:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6794,
+                  "src": "8221:21:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint64",
+                    "typeString": "uint64"
+                  },
+                  "typeName": {
+                    "id": 6784,
+                    "name": "uint64",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "8221:6:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint64",
+                      "typeString": "uint64"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 6787,
+                  "mutability": "mutable",
+                  "name": "maxPublishTime",
+                  "nameLocation": "8259:14:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6794,
+                  "src": "8252:21:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint64",
+                    "typeString": "uint64"
+                  },
+                  "typeName": {
+                    "id": 6786,
+                    "name": "uint64",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "8252:6:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint64",
+                      "typeString": "uint64"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "8137:142:22"
+            },
+            "returnParameters": {
+              "id": 6793,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 6792,
+                  "mutability": "mutable",
+                  "name": "priceFeeds",
+                  "nameLocation": "8337:10:22",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 6794,
+                  "src": "8306:41:22",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_struct$_PriceFeed_$6837_memory_ptr_$dyn_memory_ptr",
+                    "typeString": "struct PythStructs.PriceFeed[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 6790,
+                      "nodeType": "UserDefinedTypeName",
+                      "pathNode": {
+                        "id": 6789,
+                        "name": "PythStructs.PriceFeed",
+                        "nameLocations": [
+                          "8306:11:22",
+                          "8318:9:22"
+                        ],
+                        "nodeType": "IdentifierPath",
+                        "referencedDeclaration": 6837,
+                        "src": "8306:21:22"
+                      },
+                      "referencedDeclaration": 6837,
+                      "src": "8306:21:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_struct$_PriceFeed_$6837_storage_ptr",
+                        "typeString": "struct PythStructs.PriceFeed"
+                      }
+                    },
+                    "id": 6791,
+                    "nodeType": "ArrayTypeName",
+                    "src": "8306:23:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_struct$_PriceFeed_$6837_storage_$dyn_storage_ptr",
+                      "typeString": "struct PythStructs.PriceFeed[]"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "8305:43:22"
+            },
+            "scope": 6795,
+            "stateMutability": "payable",
+            "virtual": false,
+            "visibility": "external"
+          }
+        ],
+        "abstract": false,
+        "baseContracts": [
+          {
+            "baseName": {
+              "id": 6682,
+              "name": "IPythEvents",
+              "nameLocations": [
+                "373:11:22"
+              ],
+              "nodeType": "IdentifierPath",
+              "referencedDeclaration": 6817,
+              "src": "373:11:22"
+            },
+            "id": 6683,
+            "nodeType": "InheritanceSpecifier",
+            "src": "373:11:22"
+          }
+        ],
+        "canonicalName": "IPyth",
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "documentation": {
+          "id": 6681,
+          "nodeType": "StructuredDocumentation",
+          "src": "121:233:22",
+          "text": "@title Consume prices from the Pyth Network (https://pyth.network/).\n @dev Please refer to the guidance at https://docs.pyth.network/consumers/best-practices for how to consume prices safely.\n @author Pyth Data Association"
+        },
+        "fullyImplemented": false,
+        "linearizedBaseContracts": [
+          6795,
+          6817
+        ],
+        "name": "IPyth",
+        "nameLocation": "364:5:22",
+        "scope": 6796,
+        "usedErrors": [],
+        "usedEvents": [
+          6809,
+          6816
+        ]
+      }
+    ],
+    "license": "Apache-2.0"
+  },
+  "id": 22
+}

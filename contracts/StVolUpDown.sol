@@ -6,6 +6,7 @@ import "./StVol.sol";
  * @title StVolUpDown
  */
 contract StVolUpDown is StVol {
+    //@audit update : removed OperateRate
     constructor(
         address _token,
         address _oracleAddress,
@@ -13,7 +14,6 @@ contract StVolUpDown is StVol {
         address _operatorAddress,
         address _operatorVaultAddress,
         uint256 _commissionfee,
-        uint256 _operateRate,
         bytes32 _priceId
     ) 
     StVol(
@@ -23,7 +23,6 @@ contract StVolUpDown is StVol {
         _operatorAddress,
         _operatorVaultAddress,
         _commissionfee,
-        _operateRate,
         0, // 0
         StVol.StrategyType.None, // None: Up & Down
         _priceId

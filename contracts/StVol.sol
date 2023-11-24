@@ -64,7 +64,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
     uint256 public commissionfee; // commission rate (e.g. 200 = 2%, 150 = 1.50%)
     uint256 public treasuryAmount; // treasury amount that was not claimed
-    uint256 public operateRate; // operate distribute rate (e.g. 200 = 2%, 150 = 1.50%)
+    //uint256 public operateRate; // operate distribute rate (e.g. 200 = 2%, 150 = 1.50%) //@audit remove this value since it is no longer used
     uint256 public participantRate; // participant distribute rate (e.g. 200 = 2%, 150 = 1.50%)
     int256 public strategyRate; // strategy rate (e.g. 100 = 1%)
     StrategyType public strategyType; // strategy type
@@ -176,7 +176,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         _;
     }
     modifier notContract() {
-        require(!_isContract(msg.sender), "E03");
+        //require(!_isContract(msg.sender), "E03"); //@audit remove this
         require(msg.sender == tx.origin, "E03");
         _;
     }
@@ -188,7 +188,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         address _operatorAddress,
         address _operatorVaultAddress,
         uint256 _commissionfee,
-        uint256 _operateRate,
+        //uint256 _operateRate,
         int256 _strategyRate,
         StrategyType _strategyType,
         bytes32 _priceId
@@ -215,7 +215,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         operatorAddress = _operatorAddress;
         operatorVaultAddress = _operatorVaultAddress;
         commissionfee = _commissionfee;
-        operateRate = _operateRate;
+        //operateRate = _operateRate;
         strategyRate = _strategyRate;
         strategyType = _strategyType;
         priceId = _priceId;
@@ -411,8 +411,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
         // operator 100%
         token.safeTransfer(
-            operatorVaultAddress,
-            (currentTreasuryAmount * operateRate) / BASE
+            operatorVaultAddress, currentTreasuryAmount  //@audit updated to not use operateRate
         );
     }
 
@@ -705,6 +704,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
         participateInfo.position = _position;
         participateInfo.amount = participateInfo.amount + _amount;
+        
+        // @audit why do we need userRounds? and this can be forged when participated in the same epoch
         userRounds[_user].push(epoch);
 
         // Update user round data
@@ -719,17 +720,14 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         }
     }
 
-    /**
-     * @notice Returns true if `account` is a contract.
-     * @param account: account address
-     */
-    function _isContract(address account) internal view returns (bool) {
-        uint256 size;
-        assembly {
-            size := extcodesize(account)
-        }
-        return size > 0;
-    }
+    //@audit this is not a valid guard, use tx.origin == msg.sender instead
+    //function _isContract(address account) internal view returns (bool) {
+    //    uint256 size;
+    //    assembly {
+    //        size := extcodesize(account)
+    //    }
+    //    return size > 0;
+    //}
 
     function participateLimitOver(
         uint256 epoch,
