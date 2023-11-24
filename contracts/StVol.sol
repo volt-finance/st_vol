@@ -9,7 +9,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
-/** 
+/**
  * E01: Not admin
  * E02: Not operator
  * E03: Contract not allowed
@@ -43,7 +43,8 @@ import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
  * E31: Cannot be zero address
  * E32: Can only run genesisStartRound once
  * E33: Pyth Oracle non increasing publishTimes
-*/
+ */
+
 contract StVol is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -83,16 +84,19 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 blockTimestamp;
         LimitOrderStatus status;
     }
+
     enum LimitOrderStatus {
         Undeclared,
         Approve,
         Cancelled
     }
+
     mapping(uint256 => LimitOrder[]) public overLimitOrders;
     mapping(uint256 => LimitOrder[]) public underLimitOrders;
     mapping(uint256 => mapping(Position => mapping(address => ParticipateInfo))) public ledger;
     mapping(uint256 => Round) public rounds;
     mapping(address => uint256[]) public userRounds;
+
     enum Position {
         Over,
         Under
@@ -102,6 +106,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         Up,
         Down
     }
+
     struct Round {
         uint256 epoch;
         uint256 openTimestamp;
@@ -118,27 +123,21 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 rewardAmount;
         bool oracleCalled;
     }
+
     struct ParticipateInfo {
         Position position;
         uint256 amount;
         bool claimed; // default false
     }
+
     struct RoundAmount {
         uint256 totalAmount;
         uint256 overAmount;
         uint256 underAmount;
     }
 
-    event ParticipateUnder(
-        address indexed sender,
-        uint256 indexed epoch,
-        uint256 amount
-    );
-    event ParticipateOver(
-        address indexed sender,
-        uint256 indexed epoch,
-        uint256 amount
-    );
+    event ParticipateUnder(address indexed sender, uint256 indexed epoch, uint256 amount);
+    event ParticipateOver(address indexed sender, uint256 indexed epoch, uint256 amount);
     event ParticipateLimitOrder(
         address indexed sender,
         uint256 indexed epoch,
@@ -148,33 +147,24 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         Position position,
         LimitOrderStatus status
     );
-    event Claim(
-        address indexed sender,
-        uint256 indexed epoch,
-        Position position,
-        uint256 amount
-    );
+    event Claim(address indexed sender, uint256 indexed epoch, Position position, uint256 amount);
     event EndRound(uint256 indexed epoch, int256 price);
     event StartRound(uint256 indexed epoch, int256 price);
     event RewardsCalculated(
-        uint256 indexed epoch,
-        uint256 rewardBaseCalAmount,
-        uint256 rewardAmount,
-        uint256 treasuryAmount
+        uint256 indexed epoch, uint256 rewardBaseCalAmount, uint256 rewardAmount, uint256 treasuryAmount
     );
-    event OpenRound(
-        uint256 indexed epoch,
-        int256 strategyRate,
-        StrategyType strategyType
-    );
+    event OpenRound(uint256 indexed epoch, int256 strategyRate, StrategyType strategyType);
+
     modifier onlyAdmin() {
         require(msg.sender == adminAddress, "E01");
         _;
     }
+
     modifier onlyOperator() {
         require(msg.sender == operatorAddress, "E02");
         _;
     }
+
     modifier notContract() {
         //require(!_isContract(msg.sender), "E03"); //@audit remove this
         require(msg.sender == tx.origin, "E03");
@@ -193,26 +183,14 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         StrategyType _strategyType,
         bytes32 _priceId
     ) {
-        require(
-            _commissionfee <= MAX_COMMISSION_FEE,
-            "E04"
-        );
+        require(_commissionfee <= MAX_COMMISSION_FEE, "E04");
         // @audit check startegyRate
         // @audit added require statement
-        require(
-            _strategyRate <= 10000 && _strategyRate >= -10000,
-            "XX"
-        );
+        require(_strategyRate <= 10000 && _strategyRate >= -10000, "XX");
         if (_strategyRate > 0) {
-            require(
-                _strategyType != StrategyType.None,
-                "E05"
-            );
+            require(_strategyType != StrategyType.None, "E05");
         } else {
-            require(
-                _strategyType == StrategyType.None,
-                "E06"
-            );
+            require(_strategyType == StrategyType.None, "E06");
         }
 
         token = IERC20(_token);
@@ -230,70 +208,44 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         bufferSeconds = DEFAULT_BUFFER_SECONDS;
     }
 
-    function participateUnder(
-        uint256 epoch,
-        uint256 _amount
-    ) external whenNotPaused nonReentrant notContract {
+    function participateUnder(uint256 epoch, uint256 _amount) external whenNotPaused nonReentrant notContract {
         require(epoch == currentEpoch, "E07");
         require(_participable(epoch), "E08");
-        require(
-            _amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT,
-            "E09"
-        );
+        require(_amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT, "E09");
 
         token.safeTransferFrom(msg.sender, address(this), _amount);
         _participate(epoch, Position.Under, msg.sender, _amount);
     }
 
-    function participateOver(
-        uint256 epoch,
-        uint256 _amount
-    ) external whenNotPaused nonReentrant notContract {
+    function participateOver(uint256 epoch, uint256 _amount) external whenNotPaused nonReentrant notContract {
         require(epoch == currentEpoch, "E07");
         require(_participable(epoch), "E08");
-        require(
-            _amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT,
-            "E09"
-        );
+        require(_amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT, "E09");
 
         token.safeTransferFrom(msg.sender, address(this), _amount);
         _participate(epoch, Position.Over, msg.sender, _amount);
     }
 
-    function claim(
-        uint256 epoch,
-        Position position
-    ) external nonReentrant notContract {
+    function claim(uint256 epoch, Position position) external nonReentrant notContract {
         uint256 reward; // Initializes reward
 
         require(rounds[epoch].openTimestamp != 0, "E10");
-        require(
-            block.timestamp > rounds[epoch].closeTimestamp,
-            "E11"
-        );
+        require(block.timestamp > rounds[epoch].closeTimestamp, "E11");
 
         uint256 addedReward = 0;
         // Round valid, claim rewards
         if (rounds[epoch].oracleCalled) {
-            require(
-                claimable(epoch, position, msg.sender),
-                "E12"
-            );
+            require(claimable(epoch, position, msg.sender), "E12");
             if (
-                (rounds[epoch].overAmount > 0 && rounds[epoch].underAmount > 0) &&
-                (rounds[epoch].startPrice != rounds[epoch].closePrice)
+                (rounds[epoch].overAmount > 0 && rounds[epoch].underAmount > 0)
+                    && (rounds[epoch].startPrice != rounds[epoch].closePrice)
             ) {
-                addedReward +=
-                    (ledger[epoch][position][msg.sender].amount *
-                        rounds[epoch].rewardAmount) /
-                    rounds[epoch].rewardBaseCalAmount;
+                addedReward += (ledger[epoch][position][msg.sender].amount * rounds[epoch].rewardAmount)
+                    / rounds[epoch].rewardBaseCalAmount;
             }
         } else {
             // Round invalid, refund Participate amount
-            require(
-                refundable(epoch, position, msg.sender),
-                "E13"
-            );
+            require(refundable(epoch, position, msg.sender), "E13");
         }
         ledger[epoch][position][msg.sender].claimed = true;
         reward = ledger[epoch][position][msg.sender].amount + addedReward;
@@ -313,31 +265,22 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         _transferReward(_user);
     }
 
-    function executeRound(
-        bytes[] calldata priceUpdateData,
-        uint64 initDate,
-        bool isFixed
-    ) external payable whenNotPaused onlyOperator {
-        require(
-            genesisOpenOnce && genesisStartOnce,
-            "E14"
-        );
+    function executeRound(bytes[] calldata priceUpdateData, uint64 initDate, bool isFixed)
+        external
+        payable
+        whenNotPaused
+        onlyOperator
+    {
+        require(genesisOpenOnce && genesisStartOnce, "E14");
 
-        (int64 pythPrice, uint publishTime) = _getPythPrice(
-            priceUpdateData,
-            initDate,
-            isFixed
-        );
+        (int64 pythPrice, uint256 publishTime) = _getPythPrice(priceUpdateData, initDate, isFixed);
         //@audit should check if publishTime is within safe range
-        require(
-            publishTime > lastCommittedPublishTime,
-            "E15"
-        );
+        require(publishTime > lastCommittedPublishTime, "E15");
         lastCommittedPublishTime = publishTime;
 
         // CurrentEpoch refers to previous round (n-1)
         _safeStartRound(currentEpoch, pythPrice);
-        _placeLimitOrders(currentEpoch);
+        //_placeLimitOrders(currentEpoch);
         _safeEndRound(currentEpoch - 1, pythPrice);
         _calculateRewards(currentEpoch - 1);
 
@@ -350,58 +293,42 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         bytes[] calldata priceUpdateData, //@audit memory => calldata
         uint64 fixedTimestamp,
         bool isFixed
-    ) internal returns (int64, uint) {
+    ) internal returns (int64, uint256) {
         bytes32[] memory pythPair = new bytes32[](1);
         pythPair[0] = priceId;
 
-        uint fee = oracle.getUpdateFee(priceUpdateData);
+        uint256 fee = oracle.getUpdateFee(priceUpdateData);
         if (isFixed) {
-            oracle.parsePriceFeedUpdates{value: fee}(
-                priceUpdateData,
-                pythPair,
-                fixedTimestamp,
-                fixedTimestamp + 10
-            );
+            oracle.parsePriceFeedUpdates{value: fee}(priceUpdateData, pythPair, fixedTimestamp, fixedTimestamp + 10);
         } else {
             oracle.updatePriceFeeds{value: fee}(priceUpdateData);
         }
         return (oracle.getPrice(priceId).price, oracle.getPrice(priceId).publishTime);
     }
 
-    function genesisStartRound(
-        bytes[] calldata priceUpdateData,
-        uint64 initDate,
-        bool isFixed
-    ) external payable whenNotPaused onlyOperator {
-        require(
-            genesisOpenOnce,
-            "E16"
-        );
+    function genesisStartRound(bytes[] calldata priceUpdateData, uint64 initDate, bool isFixed)
+        external
+        payable
+        whenNotPaused
+        onlyOperator
+    {
+        require(genesisOpenOnce, "E16");
         require(!genesisStartOnce, "E32");
 
-        (int64 pythPrice, uint publishTime) = _getPythPrice(
-            priceUpdateData,
-            initDate,
-            isFixed
-        );
+        (int64 pythPrice, uint256 publishTime) = _getPythPrice(priceUpdateData, initDate, isFixed);
         //@audit should check if publishTime is within safe range
-        require(
-            publishTime > lastCommittedPublishTime,
-            "E15"
-        );
+        require(publishTime > lastCommittedPublishTime, "E15");
         lastCommittedPublishTime = publishTime;
 
         _safeStartRound(currentEpoch, pythPrice);
-        _placeLimitOrders(currentEpoch);
+        //_placeLimitOrders(currentEpoch);
 
         currentEpoch = currentEpoch + 1;
         _openRound(currentEpoch, initDate);
         genesisStartOnce = true;
     }
 
-    function genesisOpenRound(
-        uint256 initDate
-    ) external whenNotPaused onlyOperator {
+    function genesisOpenRound(uint256 initDate) external whenNotPaused onlyOperator {
         //@audit added
         require(genesisStartOnce, "");
         require(!genesisOpenOnce, "E33");
@@ -421,7 +348,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
         // operator 100%
         token.safeTransfer(
-            operatorVaultAddress, currentTreasuryAmount  //@audit updated to not use operateRate
+            operatorVaultAddress,
+            currentTreasuryAmount //@audit updated to not use operateRate
         );
     }
 
@@ -431,40 +359,36 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         _unpause();
     }
 
-    function setBufferAndIntervalSeconds(
-        uint256 _bufferSeconds,
-        uint256 _intervalSeconds
-    ) external whenPaused onlyAdmin {
-        require(
-            _bufferSeconds < _intervalSeconds,
-            "E30"
-        );
+    function setBufferAndIntervalSeconds(uint256 _bufferSeconds, uint256 _intervalSeconds)
+        external
+        whenPaused
+        onlyAdmin
+    {
+        require(_bufferSeconds < _intervalSeconds, "E30");
         bufferSeconds = _bufferSeconds;
         intervalSeconds = _intervalSeconds;
     }
+
     function setOperator(address _operatorAddress) external onlyAdmin {
         require(_operatorAddress != address(0), "E31");
         operatorAddress = _operatorAddress;
     }
-    function setOperatorVault(
-        address _operatorVaultAddress
-    ) external onlyAdmin {
+
+    function setOperatorVault(address _operatorVaultAddress) external onlyAdmin {
         require(_operatorVaultAddress != address(0), "E31");
         operatorVaultAddress = _operatorVaultAddress;
     }
+
     function setOracle(address _oracle) external whenPaused onlyAdmin {
         require(_oracle != address(0), "E31");
         oracle = IPyth(_oracle);
     }
-    function setCommissionfee(
-        uint256 _commissionfee
-    ) external whenPaused onlyAdmin {
-        require(
-            _commissionfee <= MAX_COMMISSION_FEE,
-            "E04"
-        );
+
+    function setCommissionfee(uint256 _commissionfee) external whenPaused onlyAdmin {
+        require(_commissionfee <= MAX_COMMISSION_FEE, "E04");
         commissionfee = _commissionfee;
     }
+
     function setAdmin(address _adminAddress) external onlyOwner {
         require(_adminAddress != address(0), "E31");
         adminAddress = _adminAddress;
@@ -474,28 +398,22 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 reward = 0; // Initializes reward
 
         for (uint256 epoch = 1; epoch <= currentEpoch; epoch++) {
-            if (
-                rounds[epoch].startTimestamp == 0 ||
-                (block.timestamp < rounds[epoch].closeTimestamp + bufferSeconds)
-            ) continue;
+            if (rounds[epoch].startTimestamp == 0 || (block.timestamp < rounds[epoch].closeTimestamp + bufferSeconds)) {
+                continue;
+            }
 
             Round memory round = rounds[epoch];
             // 0: Over, 1: Under
-            uint pst = 0;
-            while (pst <= uint(Position.Under)) {
+            uint256 pst = 0;
+            while (pst <= uint256(Position.Under)) {
                 Position position = pst == 0 ? Position.Over : Position.Under;
                 uint256 addedReward = 0;
 
                 // Round vaild, claim rewards
                 if (claimable(epoch, position, _user)) {
-                    if (
-                        (round.overAmount > 0 && round.underAmount > 0) &&
-                        (round.startPrice != round.closePrice)
-                    ) {
+                    if ((round.overAmount > 0 && round.underAmount > 0) && (round.startPrice != round.closePrice)) {
                         addedReward +=
-                            (ledger[epoch][position][_user].amount *
-                                round.rewardAmount) /
-                            round.rewardBaseCalAmount;
+                            (ledger[epoch][position][_user].amount * round.rewardAmount) / round.rewardBaseCalAmount;
                     }
                     addedReward += ledger[epoch][position][_user].amount;
                 } else {
@@ -518,52 +436,37 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         }
     }
 
-    function claimable(
-        uint256 epoch,
-        Position position,
-        address user
-    ) public view returns (bool) {
+    function claimable(uint256 epoch, Position position, address user) public view returns (bool) {
         ParticipateInfo memory participateInfo = ledger[epoch][position][user];
         Round memory round = rounds[epoch];
 
         bool isPossible = false;
         if (round.overAmount > 0 && round.underAmount > 0) {
-            isPossible = ((round.closePrice >
-                _getStrategyRatePrice(round.startPrice) &&
-                participateInfo.position == Position.Over) ||
-                (round.closePrice < _getStrategyRatePrice(round.startPrice) &&
-                    participateInfo.position == Position.Under) ||
-                (round.closePrice == _getStrategyRatePrice(round.startPrice)));
+            isPossible = (
+                (
+                    round.closePrice > _getStrategyRatePrice(round.startPrice)
+                        && participateInfo.position == Position.Over
+                )
+                    || (
+                        round.closePrice < _getStrategyRatePrice(round.startPrice)
+                            && participateInfo.position == Position.Under
+                    ) || (round.closePrice == _getStrategyRatePrice(round.startPrice))
+            );
         } else {
             // refund user's fund if there is no paticipation on the other side
             isPossible = true;
         }
-        return
-            round.oracleCalled &&
-            participateInfo.amount != 0 &&
-            !participateInfo.claimed &&
-            isPossible;
+        return round.oracleCalled && participateInfo.amount != 0 && !participateInfo.claimed && isPossible;
     }
 
-    function refundable(
-        uint256 epoch,
-        Position position,
-        address user
-    ) public view returns (bool) {
+    function refundable(uint256 epoch, Position position, address user) public view returns (bool) {
         ParticipateInfo memory participateInfo = ledger[epoch][position][user];
-        return
-            !rounds[epoch].oracleCalled &&
-            !participateInfo.claimed &&
-            block.timestamp > rounds[epoch].closeTimestamp + bufferSeconds &&
-            participateInfo.amount != 0;
+        return !rounds[epoch].oracleCalled && !participateInfo.claimed
+            && block.timestamp > rounds[epoch].closeTimestamp + bufferSeconds && participateInfo.amount != 0;
     }
 
     function _calculateRewards(uint256 epoch) internal {
-        require(
-            rounds[epoch].rewardBaseCalAmount == 0 &&
-                rounds[epoch].rewardAmount == 0,
-            "E29"
-        );
+        require(rounds[epoch].rewardBaseCalAmount == 0 && rounds[epoch].rewardAmount == 0, "E29");
         Round storage round = rounds[epoch];
         uint256 rewardBaseCalAmount;
         uint256 treasuryAmt;
@@ -582,9 +485,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 rewardAmount = round.underAmount - treasuryAmt;
             }
             // Under wins
-            else if (
-                round.closePrice < _getStrategyRatePrice(round.startPrice)
-            ) {
+            else if (round.closePrice < _getStrategyRatePrice(round.startPrice)) {
                 rewardBaseCalAmount = round.underAmount;
                 treasuryAmt = (round.overAmount * commissionfee) / BASE;
                 rewardAmount = round.overAmount - treasuryAmt;
@@ -602,17 +503,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         // Add to treasury
         treasuryAmount += treasuryAmt;
 
-        emit RewardsCalculated(
-            epoch,
-            rewardBaseCalAmount,
-            rewardAmount,
-            treasuryAmt
-        );
+        emit RewardsCalculated(epoch, rewardBaseCalAmount, rewardAmount, treasuryAmt);
     }
 
-    function _getStrategyRatePrice(
-        int256 price
-    ) internal view returns (int256) {
+    function _getStrategyRatePrice(int256 price) internal view returns (int256) {
         if (strategyType == StrategyType.Up) {
             return price + (price * strategyRate) / int256(BASE);
         } else if (strategyType == StrategyType.Down) {
@@ -623,18 +517,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     function _safeEndRound(uint256 epoch, int256 price) internal {
-        require(
-            rounds[epoch].startTimestamp != 0,
-            "E26"
-        );
-        require(
-            block.timestamp >= rounds[epoch].closeTimestamp,
-            "E27"
-        );
-        require(
-            block.timestamp <= rounds[epoch].closeTimestamp + bufferSeconds,
-            "E28"
-        );
+        require(rounds[epoch].startTimestamp != 0, "E26");
+        require(block.timestamp >= rounds[epoch].closeTimestamp, "E27");
+        require(block.timestamp <= rounds[epoch].closeTimestamp + bufferSeconds, "E28");
         rounds[epoch].closePrice = price;
         rounds[epoch].oracleCalled = true;
 
@@ -642,47 +527,23 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     function _safeStartRound(uint256 epoch, int256 price) internal {
-        require(
-            rounds[epoch].openTimestamp != 0,
-            "E23"
-        );
-        require(
-            block.timestamp >= rounds[epoch].startTimestamp,
-            "E24"
-        );
-        require(
-            block.timestamp <= rounds[epoch].startTimestamp + bufferSeconds,
-            "E25"
-        );
+        require(rounds[epoch].openTimestamp != 0, "E23");
+        require(block.timestamp >= rounds[epoch].startTimestamp, "E24");
+        require(block.timestamp <= rounds[epoch].startTimestamp + bufferSeconds, "E25");
         rounds[epoch].startPrice = price;
         emit StartRound(epoch, rounds[epoch].startPrice);
     }
 
     function _safeOpenRound(uint256 epoch, uint256 initDate) internal {
-        require(
-            genesisOpenOnce,
-            "E16"
-        );
-        require(
-            rounds[epoch - 2].closeTimestamp != 0,
-            "E17"
-        );
-        require(
-            block.timestamp >= rounds[epoch - 2].closeTimestamp,
-            "E18"
-        );
-        require(
-            block.timestamp >= initDate,
-            "E19"
-        );
+        require(genesisOpenOnce, "E16");
+        require(rounds[epoch - 2].closeTimestamp != 0, "E17");
+        require(block.timestamp >= rounds[epoch - 2].closeTimestamp, "E18");
+        require(block.timestamp >= initDate, "E19");
         _openRound(epoch, initDate);
     }
 
     function _openRound(uint256 epoch, uint256 initDate) internal {
-        require(
-            block.timestamp >= initDate,
-            "E19"
-        );
+        require(block.timestamp >= initDate, "E19");
 
         rounds[epoch].openTimestamp = initDate;
         rounds[epoch].startTimestamp = initDate + intervalSeconds;
@@ -694,27 +555,17 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     function _participable(uint256 epoch) internal view returns (bool) {
-        return
-            rounds[epoch].openTimestamp != 0 &&
-            rounds[epoch].startTimestamp != 0 &&
-            block.timestamp > rounds[epoch].openTimestamp &&
-            block.timestamp < rounds[epoch].startTimestamp;
+        return rounds[epoch].openTimestamp != 0 && rounds[epoch].startTimestamp != 0
+            && block.timestamp > rounds[epoch].openTimestamp && block.timestamp < rounds[epoch].startTimestamp;
     }
 
-    function _participate(
-        uint256 epoch,
-        Position _position,
-        address _user,
-        uint256 _amount
-    ) internal {
+    function _participate(uint256 epoch, Position _position, address _user, uint256 _amount) internal {
         // Update user data
-        ParticipateInfo storage participateInfo = ledger[epoch][_position][
-            _user
-        ];
+        ParticipateInfo storage participateInfo = ledger[epoch][_position][_user];
 
         participateInfo.position = _position;
         participateInfo.amount = participateInfo.amount + _amount;
-        
+
         // @audit why do we need userRounds? and this can be forged when participated in the same epoch
         userRounds[_user].push(epoch);
 
@@ -738,299 +589,4 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     //    }
     //    return size > 0;
     //}
-
-    function participateLimitOver(
-        uint256 epoch,
-        uint256 _amount,
-        uint256 _payout
-    ) external whenNotPaused nonReentrant notContract {
-        require(epoch == currentEpoch, "E07");
-        require(_participable(epoch), "E08");
-        require(
-            _amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT,
-            "E09"
-        );
-        require(_payout > BASE, "E20");
-        token.safeTransferFrom(msg.sender, address(this), _amount);
-
-        LimitOrder[] storage limitOrders = overLimitOrders[epoch];
-        limitOrders.push(
-            LimitOrder(
-                msg.sender,
-                _payout,
-                _amount,
-                block.timestamp,
-                LimitOrderStatus.Undeclared
-            )
-        );
-        emit ParticipateLimitOrder(msg.sender
-        , epoch
-        , _amount
-        , _payout
-        , block.timestamp
-        , Position.Over
-        , LimitOrderStatus.Undeclared);
-    }
-
-    /**
-     * @notice Participate under limit position
-     */
-    function participateLimitUnder(
-        uint256 epoch,
-        uint256 _amount,
-        uint256 _payout
-    ) external whenNotPaused nonReentrant notContract {
-        require(epoch == currentEpoch, "E07");
-        require(_participable(epoch), "E08");
-        require(
-            _amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT,
-            "E09"
-        );
-        require(_payout > BASE, "E20");
-        token.safeTransferFrom(msg.sender, address(this), _amount);
-
-        LimitOrder[] storage limitOrders = underLimitOrders[epoch];
-        limitOrders.push(
-            LimitOrder(
-                msg.sender,
-                _payout,
-                _amount,
-                block.timestamp,
-                LimitOrderStatus.Undeclared
-            )
-        );
-        emit ParticipateLimitOrder(msg.sender
-        , epoch
-        , _amount
-        , _payout
-        , block.timestamp
-        , Position.Under
-        , LimitOrderStatus.Undeclared);
-    }
-
-    function cancelLimitOrder(
-        uint256 epoch,
-        Position position,
-        uint256 blockTimestamp,
-        uint256 amount
-    ) external nonReentrant notContract {
-        require(rounds[epoch].openTimestamp != 0,
-            "E21"
-        );
-        require(block.timestamp < rounds[epoch].startTimestamp,
-            "E22"
-        );
-
-        if (position == Position.Over) {
-            for (uint256 i = 0; i < overLimitOrders[epoch].length; i++) {
-                if (overLimitOrders[epoch][i].user == msg.sender
-                    && overLimitOrders[epoch][i].blockTimestamp == blockTimestamp
-                    && overLimitOrders[epoch][i].amount == amount) {
-
-                    overLimitOrders[epoch][i].status = LimitOrderStatus.Cancelled;    
-                    if (overLimitOrders[epoch][i].amount > 0) {
-                        token.safeTransfer(msg.sender, overLimitOrders[epoch][i].amount);
-                    }
-                    emit ParticipateLimitOrder(msg.sender
-                    , epoch
-                    , overLimitOrders[epoch][i].amount
-                    , overLimitOrders[epoch][i].payout
-                    , overLimitOrders[epoch][i].blockTimestamp
-                    , position
-                    , LimitOrderStatus.Cancelled);
-                    break;
-                }
-            }
-        } else {
-            for (uint256 i = 0; i < underLimitOrders[epoch].length; i++) {
-                if (underLimitOrders[epoch][i].user == msg.sender
-                    && underLimitOrders[epoch][i].blockTimestamp == blockTimestamp
-                    && underLimitOrders[epoch][i].amount == amount) {
-
-                    underLimitOrders[epoch][i].status = LimitOrderStatus.Cancelled;    
-                    if (underLimitOrders[epoch][i].amount > 0) {
-                        token.safeTransfer(msg.sender, underLimitOrders[epoch][i].amount);
-                    }
-                    emit ParticipateLimitOrder(msg.sender
-                    , epoch
-                    , underLimitOrders[epoch][i].amount
-                    , underLimitOrders[epoch][i].payout
-                    , underLimitOrders[epoch][i].blockTimestamp
-                    , position
-                    , LimitOrderStatus.Cancelled);
-                    break;
-                }
-            }
-        }
-    }
-
-    function _placeLimitOrders(uint256 epoch) internal {
-        RoundAmount memory ra = RoundAmount(
-            rounds[epoch].totalAmount,
-            rounds[epoch].overAmount,
-            rounds[epoch].underAmount
-        );
-
-        bool applyPayout = false;
-        LimitOrder[] memory sortedOverLimitOrders = _sortByPayout(
-            overLimitOrders[epoch]
-        );
-        LimitOrder[] memory sortedUnderLimitOrders = _sortByPayout(
-            underLimitOrders[epoch]
-        );
-
-        do {
-            // proc over limit orders
-            for (uint overOffset = 0; overOffset < sortedOverLimitOrders.length; overOffset++) {
-                uint expectedPayout = ((ra.totalAmount +
-                    sortedOverLimitOrders[overOffset].amount) * BASE) /
-                    (ra.overAmount + sortedOverLimitOrders[overOffset].amount);
-                if (
-                    sortedOverLimitOrders[overOffset].payout <= expectedPayout 
-                    && sortedOverLimitOrders[overOffset].status == LimitOrderStatus.Undeclared
-                ) {
-                    ra.totalAmount =
-                        ra.totalAmount +
-                        sortedOverLimitOrders[overOffset].amount;
-                    ra.overAmount =
-                        ra.overAmount +
-                        sortedOverLimitOrders[overOffset].amount;
-                    sortedOverLimitOrders[overOffset].status = LimitOrderStatus
-                        .Approve;
-                }
-            }
-
-            applyPayout = false;
-            // proc under limit orders
-            for (uint underOffset = 0; underOffset < sortedUnderLimitOrders.length; underOffset++) {
-                uint expectedPayout = ((ra.totalAmount +
-                    sortedUnderLimitOrders[underOffset].amount) * BASE) /
-                    (ra.underAmount +
-                        sortedUnderLimitOrders[underOffset].amount);
-                if (
-                    sortedUnderLimitOrders[underOffset].payout <= expectedPayout
-                    && sortedUnderLimitOrders[underOffset].status == LimitOrderStatus.Undeclared
-                ) {
-                    ra.totalAmount =
-                        ra.totalAmount +
-                        sortedUnderLimitOrders[underOffset].amount;
-                    ra.underAmount =
-                        ra.underAmount +
-                        sortedUnderLimitOrders[underOffset].amount;
-                    sortedUnderLimitOrders[underOffset]
-                        .status = LimitOrderStatus.Approve;
-                    applyPayout = true;
-                }
-            }
-        } while (applyPayout);
-
-        for (uint i = 0; i < sortedOverLimitOrders.length; i++) {
-            if ( sortedOverLimitOrders[i].status == LimitOrderStatus.Cancelled) continue;
-            for (uint j = 0; j < overLimitOrders[epoch].length; j++) {
-                if (
-                    sortedOverLimitOrders[i].user ==
-                    overLimitOrders[epoch][j].user &&
-                    sortedOverLimitOrders[i].blockTimestamp ==
-                    overLimitOrders[epoch][j].blockTimestamp 
-                ) {
-                    if (sortedOverLimitOrders[i].status == LimitOrderStatus.Undeclared) {
-                        // refund participate amount to user
-                        overLimitOrders[epoch][j].status = LimitOrderStatus.Cancelled;
-                        token.safeTransfer(
-                            sortedOverLimitOrders[i].user,
-                            sortedOverLimitOrders[i].amount
-                        );
-                        emit ParticipateLimitOrder(
-                            sortedOverLimitOrders[i].user
-                            , epoch
-                            , sortedOverLimitOrders[i].amount
-                            , sortedOverLimitOrders[i].payout
-                            , sortedOverLimitOrders[i].blockTimestamp
-                            , Position.Over
-                            , LimitOrderStatus.Cancelled);
-                        break;
-                    } 
-                    if (sortedOverLimitOrders[i].status == LimitOrderStatus.Approve) {
-                        overLimitOrders[epoch][j].status = LimitOrderStatus.Approve;
-                        _participate(
-                            epoch,
-                            Position.Over,
-                            sortedOverLimitOrders[i].user,
-                            sortedOverLimitOrders[i].amount
-                        );
-                        emit ParticipateLimitOrder(
-                            sortedOverLimitOrders[i].user
-                            , epoch
-                            , sortedOverLimitOrders[i].amount
-                            , sortedOverLimitOrders[i].payout
-                            , sortedOverLimitOrders[i].blockTimestamp
-                            , Position.Over
-                            , LimitOrderStatus.Approve);
-                        break;
-                    }
-                }
-            }
-        }
-        for (uint i = 0; i < sortedUnderLimitOrders.length; i++) {
-            if ( sortedUnderLimitOrders[i].status == LimitOrderStatus.Cancelled) continue;
-            for (uint j = 0; j < underLimitOrders[epoch].length; j++) {
-                if (
-                    sortedUnderLimitOrders[i].user ==
-                    underLimitOrders[epoch][j].user &&
-                    sortedUnderLimitOrders[i].blockTimestamp ==
-                    underLimitOrders[epoch][j].blockTimestamp
-                ) {
-
-                    if (sortedUnderLimitOrders[i].status == LimitOrderStatus.Undeclared) {
-                        // refund participate amount to user
-                        underLimitOrders[epoch][j].status = LimitOrderStatus.Cancelled;
-                        token.safeTransfer(
-                            sortedUnderLimitOrders[i].user,
-                            sortedUnderLimitOrders[i].amount
-                        );
-                        emit ParticipateLimitOrder(
-                            sortedUnderLimitOrders[i].user
-                            , epoch
-                            , sortedUnderLimitOrders[i].amount
-                            , sortedUnderLimitOrders[i].payout
-                            , sortedUnderLimitOrders[i].blockTimestamp
-                            , Position.Under
-                            , LimitOrderStatus.Cancelled);
-                        break;
-                    } 
-                    if (sortedUnderLimitOrders[i].status == LimitOrderStatus.Approve) {
-                        underLimitOrders[epoch][j].status = LimitOrderStatus.Approve;
-                        _participate(
-                            epoch,
-                            Position.Under,
-                            sortedUnderLimitOrders[i].user,
-                            sortedUnderLimitOrders[i].amount
-                        );
-                        emit ParticipateLimitOrder(
-                            sortedUnderLimitOrders[i].user
-                            , epoch
-                            , sortedUnderLimitOrders[i].amount
-                            , sortedUnderLimitOrders[i].payout
-                            , sortedUnderLimitOrders[i].blockTimestamp
-                            , Position.Under
-                            , LimitOrderStatus.Approve);
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    function _sortByPayout(
-        LimitOrder[] memory items
-    ) internal pure returns (LimitOrder[] memory) {
-        for (uint i = 1; i < items.length; i++)
-            for (uint j = 0; j < i; j++)
-                if (items[i].payout < items[j].payout) {
-                    LimitOrder memory x = items[i];
-                    items[i] = items[j];
-                    items[j] = x;
-                }
-
-        return items;
-    }
 }

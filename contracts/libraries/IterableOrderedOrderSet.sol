@@ -10,11 +10,9 @@ library IterableOrderedOrderSet {
     using IterableOrderedOrderSet for bytes32;
 
     // represents smallest possible value for an order under comparison of fn smallerThan()
-    bytes32 internal constant QUEUE_START =
-        0x0000000000000000000000000000000000000000000000000000000000000001;
+    bytes32 internal constant QUEUE_START = 0x0000000000000000000000000000000000000000000000000000000000000001;
     // represents highest possible value for an order under comparison of fn smallerThan()
-    bytes32 internal constant QUEUE_END =
-        0xffffffffffffffffffffffffffffffffffffffff000000000000000000000001;
+    bytes32 internal constant QUEUE_END = 0xffffffffffffffffffffffffffffffffffffffff000000000000000000000001;
 
     /// The struct is used to implement a modified version of a doubly linked
     /// list with sorted elements. The list starts from QUEUE_START to
@@ -47,29 +45,19 @@ library IterableOrderedOrderSet {
         return self.nextMap[QUEUE_START] == QUEUE_END;
     }
 
-    function insert(
-        Data storage self,
-        bytes32 elementToInsert,
-        bytes32 elementBeforeNewOne
-    ) internal returns (bool) {
+    function insert(Data storage self, bytes32 elementToInsert, bytes32 elementBeforeNewOne) internal returns (bool) {
         (uint32 payout, uint64 amount, address user) = decodeOrder(elementToInsert);
-        
+
         console.log("user: %s, payout: %s, amount: %s", user, payout, amount);
 
         require(payout != uint96(0), "Inserting zero is not supported");
         require(amount != uint96(0), "Inserting zero is not supported");
 
-        require(
-            elementToInsert != QUEUE_START && elementToInsert != QUEUE_END,
-            "Inserting element is not valid"
-        );
+        require(elementToInsert != QUEUE_START && elementToInsert != QUEUE_END, "Inserting element is not valid");
         if (contains(self, elementToInsert)) {
             return false;
         }
-        if (
-            elementBeforeNewOne != QUEUE_START &&
-            self.prevMap[elementBeforeNewOne] == bytes32(0)
-        ) {
+        if (elementBeforeNewOne != QUEUE_START && self.prevMap[elementBeforeNewOne] == bytes32(0)) {
             return false;
         }
         if (!elementBeforeNewOne.smallerThan(elementToInsert)) {
@@ -107,10 +95,7 @@ library IterableOrderedOrderSet {
     /// The element is removed from the linked list, but the node retains
     /// information on which predecessor it had, so that a node in the chain
     /// can be reached by following the predecessor chain of deleted elements.
-    function removeKeepHistory(Data storage self, bytes32 elementToRemove)
-        internal
-        returns (bool)
-    {
+    function removeKeepHistory(Data storage self, bytes32 elementToRemove) internal returns (bool) {
         if (!contains(self, elementToRemove)) {
             return false;
         }
@@ -126,10 +111,7 @@ library IterableOrderedOrderSet {
     /// Note that no elements should be inserted using as a reference point a
     /// node deleted after calling `remove`, since an element in the `prev`
     /// chain might be missing.
-    function remove(Data storage self, bytes32 elementToRemove)
-        internal
-        returns (bool)
-    {
+    function remove(Data storage self, bytes32 elementToRemove) internal returns (bool) {
         bool result = removeKeepHistory(self, elementToRemove);
         if (result) {
             self.prevMap[elementToRemove] = bytes32(0);
@@ -137,11 +119,7 @@ library IterableOrderedOrderSet {
         return result;
     }
 
-    function contains(Data storage self, bytes32 value)
-        internal
-        view
-        returns (bool)
-    {
+    function contains(Data storage self, bytes32 value) internal view returns (bool) {
         if (value == QUEUE_START) {
             return false;
         }
@@ -152,13 +130,9 @@ library IterableOrderedOrderSet {
 
     // @dev orders are ordered by
     // 1. their payout
-    function smallerThan(bytes32 orderLeft, bytes32 orderRight)
-        internal
-        pure
-        returns (bool)
-    {
-        ( , uint96 payoutLeft, ) = decodeOrder(orderLeft);
-        ( , uint96 payoutRight, ) = decodeOrder(orderRight);
+    function smallerThan(bytes32 orderLeft, bytes32 orderRight) internal pure returns (bool) {
+        (, uint96 payoutLeft,) = decodeOrder(orderLeft);
+        (, uint96 payoutRight,) = decodeOrder(orderRight);
 
         if (payoutLeft < payoutRight) return true;
         if (payoutLeft > payoutRight) return false;
@@ -171,29 +145,14 @@ library IterableOrderedOrderSet {
         return self.nextMap[QUEUE_START];
     }
 
-    function next(Data storage self, bytes32 value)
-        internal
-        view
-        returns (bytes32)
-    {
+    function next(Data storage self, bytes32 value) internal view returns (bytes32) {
         require(value != QUEUE_END, "Trying to get next of last element");
         bytes32 nextElement = self.nextMap[value];
-        require(
-            nextElement != bytes32(0),
-            "Trying to get next of non-existent element"
-        );
+        require(nextElement != bytes32(0), "Trying to get next of non-existent element");
         return nextElement;
     }
 
-    function decodeOrder(bytes32 _orderData)
-        internal
-        pure
-        returns (
-            uint32 payout,
-            uint64 amount,
-            address user
-        )
-    {
+    function decodeOrder(bytes32 _orderData) internal pure returns (uint32 payout, uint64 amount, address user) {
         // Note: converting to uint discards the binary digits that do not fit
         // the type.
         payout = uint32(uint256(_orderData) >> 224);
@@ -201,16 +160,7 @@ library IterableOrderedOrderSet {
         user = address(uint160(uint256(_orderData)));
     }
 
-    function encodeOrder(
-        uint32 payout,
-        uint64 amount,
-        address user
-    ) internal pure returns (bytes32) {
-        return
-            bytes32(
-                (uint256(payout) << 224) +
-                (uint256(amount) << 160) +
-                (uint256(uint160(user))) 
-            );
+    function encodeOrder(uint32 payout, uint64 amount, address user) internal pure returns (bytes32) {
+        return bytes32((uint256(payout) << 224) + (uint256(amount) << 160) + (uint256(uint160(user))));
     }
 }

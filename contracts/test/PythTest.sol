@@ -16,10 +16,11 @@ contract PythTest {
         priceId = _priceId;
     }
 
-    function parsePriceFeedUpdates(
-        bytes memory _pythUpdateData,
-        uint64 _fixedDate
-    ) external payable returns (int64, uint256) {
+    function parsePriceFeedUpdates(bytes memory _pythUpdateData, uint64 _fixedDate)
+        external
+        payable
+        returns (int64, uint256)
+    {
         bytes32[] memory priceIds = new bytes32[](1);
         bytes[] memory pythData = new bytes[](1);
         priceIds[0] = priceId;
@@ -27,12 +28,8 @@ contract PythTest {
 
         uint256 fee = pyth.getUpdateFee(pythData);
         pyth.updatePriceFeeds{value: fee}(pythData);
-        PythStructs.PriceFeed memory pythPrice = pyth.parsePriceFeedUpdates{value: fee}(
-            pythData,
-            priceIds,
-            _fixedDate,
-            _fixedDate+5
-        )[0];
+        PythStructs.PriceFeed memory pythPrice =
+            pyth.parsePriceFeedUpdates{value: fee}(pythData, priceIds, _fixedDate, _fixedDate + 5)[0];
         return (pyth.getPrice(priceId).price, fee);
 
         // emit ParsePriceFeedUpdates(

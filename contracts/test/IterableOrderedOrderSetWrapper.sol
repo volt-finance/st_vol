@@ -52,32 +52,15 @@ contract IterableOrderedOrderSetWrapper {
         return data.prevMap[value];
     }
 
-    function decodeOrder(bytes32 value)
-        public
-        pure
-        returns (
-            uint32,
-            uint64,
-            address
-        )
-    {
+    function decodeOrder(bytes32 value) public pure returns (uint32, uint64, address) {
         return IterableOrderedOrderSet.decodeOrder(value);
     }
 
-    function encodeOrder(
-        uint32 payout,
-        uint64 amount,
-        address user
-    ) public pure returns (bytes32) {
-        return
-            IterableOrderedOrderSet.encodeOrder(payout, amount, user);
+    function encodeOrder(uint32 payout, uint64 amount, address user) public pure returns (bytes32) {
+        return IterableOrderedOrderSet.encodeOrder(payout, amount, user);
     }
 
-    function smallerThan(bytes32 orderLeft, bytes32 orderRight)
-        public
-        pure
-        returns (bool)
-    {
+    function smallerThan(bytes32 orderLeft, bytes32 orderRight) public pure returns (bool) {
         return IterableOrderedOrderSet.smallerThan(orderLeft, orderRight);
     }
 }

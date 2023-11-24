@@ -19,18 +19,10 @@ contract TimeSeriesViewer {
      * @param firstRoundId: first roundId from Chainlink
      * @param lastRoundId: last roundId from Chainlink
      */
-    function viewHistoricalPrices(
-        address aggregator,
-        uint80 firstRoundId,
-        uint80 lastRoundId
-    )
+    function viewHistoricalPrices(address aggregator, uint80 firstRoundId, uint80 lastRoundId)
         external
         view
-        returns (
-            uint80[] memory roundIds,
-            int256[] memory prices,
-            uint256[] memory timestamps
-        )
+        returns (uint80[] memory roundIds, int256[] memory prices, uint256[] memory timestamps)
     {
         uint256 numberRounds = lastRoundId - firstRoundId + 1;
 
@@ -39,7 +31,7 @@ contract TimeSeriesViewer {
         timestamps = new uint256[](numberRounds);
 
         for (uint80 i = firstRoundId; i <= lastRoundId; i++) {
-            (roundIds[i], prices[i], , timestamps[i], ) = AggregatorV3Interface(aggregator).getRoundData(i);
+            (roundIds[i], prices[i],, timestamps[i],) = AggregatorV3Interface(aggregator).getRoundData(i);
         }
 
         return (roundIds, prices, timestamps);

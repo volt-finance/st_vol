@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+
 import "./StVol.sol";
 
 /**
@@ -15,17 +16,17 @@ contract StVol1PerUp is StVol {
         address _operatorVaultAddress,
         uint256 _commissionfee,
         bytes32 _priceId
-    ) 
-    StVol(
-        _token,
-        _oracleAddress,
-        _adminAddress,
-        _operatorAddress,
-        _operatorVaultAddress,
-        _commissionfee,
-        100, // 100: 1%
-        StVol.StrategyType.Up,
-        _priceId
-    ) {}
-
+    )
+        StVol(
+            _token,
+            _oracleAddress,
+            _adminAddress,
+            _operatorAddress,
+            _operatorVaultAddress,
+            _commissionfee,
+            100, // 100: 1%
+            StVol.StrategyType.Up,
+            _priceId
+        )
+    {}
 }
