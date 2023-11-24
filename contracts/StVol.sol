@@ -197,6 +197,12 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             _commissionfee <= MAX_COMMISSION_FEE,
             "E04"
         );
+        // @audit check startegyRate
+        // @audit added require statement
+        require(
+            _strategyRate <= 10000 && _strategyRate >= -10000,
+            "XX"
+        );
         if (_strategyRate > 0) {
             require(
                 _strategyType != StrategyType.None,
@@ -300,11 +306,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     function claimAll() external nonReentrant notContract {
-        _trasferReward(msg.sender);
+        _transferReward(msg.sender);
     }
 
     function redeemAll(address _user) external whenPaused onlyAdmin {
-        _trasferReward(_user);
+        _transferReward(_user);
     }
 
     function executeRound(
@@ -322,6 +328,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             initDate,
             isFixed
         );
+        //@audit should check if publishTime is within safe range
         require(
             publishTime > lastCommittedPublishTime,
             "E15"
@@ -340,7 +347,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     function _getPythPrice(
-        bytes[] memory priceUpdateData,
+        bytes[] calldata priceUpdateData, //@audit memory => calldata
         uint64 fixedTimestamp,
         bool isFixed
     ) internal returns (int64, uint) {
@@ -377,6 +384,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             initDate,
             isFixed
         );
+        //@audit should check if publishTime is within safe range
         require(
             publishTime > lastCommittedPublishTime,
             "E15"
@@ -394,6 +402,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     function genesisOpenRound(
         uint256 initDate
     ) external whenNotPaused onlyOperator {
+        //@audit added
+        require(genesisStartOnce, "");
         require(!genesisOpenOnce, "E33");
 
         currentEpoch = currentEpoch + 1;
@@ -460,7 +470,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         adminAddress = _adminAddress;
     }
 
-    function _trasferReward(address _user) internal {
+    function _transferReward(address _user) internal {
         uint256 reward = 0; // Initializes reward
 
         for (uint256 epoch = 1; epoch <= currentEpoch; epoch++) {
