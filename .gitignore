@@ -6,3 +6,13 @@ coverage.json
 coverage
 artifacts
 cache
+out
+dist/
+types/
+cache
+artifacts
+artifacts-selected
+
+cache_hardhat
+
+lcov.info
