@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@chainlink/contracts": "^0.2.0",
+    "@nomicfoundation/hardhat-foundry": "^1.1.1",
     "@nomiclabs/hardhat-ethers": "^2.2.3",
     "@nomiclabs/hardhat-truffle5": "^2.0.7",
     "@openzeppelin/contracts": "^4.2.0",

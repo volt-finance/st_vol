@@ -1,76 +1,66 @@
-# stVol:On Chain Short-term Vol market
+## Foundry
 
-## Description
+**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
 
-Digital option market for crypto trade on 1 day price change
+Foundry consists of:
 
+-   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
+-   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
+-   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
+-   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
 
 ## Documentation
 
-## Oracle Price Feed (Chainlink)
+https://book.getfoundry.sh/
 
-### ETH/USD
+## Usage
 
-- Mainnet: 
-- Goerli: 
+### Build
 
-## Deployment
-
-
-### Operation
-
-When a round is started, the round's `lockBlock` and `closeBlock` would be set.
-
-`lockBlock` = current block + `intervalBlocks`
-
-`closeBlock` = current block + (`intervalBlocks` \* 2)
-
-## Kick-start Rounds
-
-The rounds are always kick-started with:
-
-```
-genesisOpenRound()
-(wait for x blocks)
-genesisStartRound()
-(wait for x blocks)
-executeRound()
+```shell
+$ forge build
 ```
 
-## Continue Running Rounds
+### Test
 
-```
-executeRound()
-(wait for x blocks)
-executeRound()
-(wait for x blocks)
+```shell
+$ forge test
 ```
 
-## Resuming Rounds
+### Format
 
-After errors like missing `executeRound()` etc.
-
-```
-pause()
-(Users can't participant, but still is able to withdraw)
-unpause()
-genesisOpenRound()
-(wait for x blocks)
-genesisStartRound()
-(wait for x blocks)
-executeRound()
+```shell
+$ forge fmt
 ```
 
-## Common Errors
+### Gas Snapshots
 
-Refer to `test/stVol.test.js`
+```shell
+$ forge snapshot
+```
 
-## Architecture Illustration
+### Anvil
 
-### Normal Operation
+```shell
+$ anvil
+```
 
-![normal](images/normal-round.png)
+### Deploy
 
-### Missing Round Operation
+```shell
+$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+```
 
-![missing](images/missing-round.png)
+### Cast
+
+```shell
+$ cast <subcommand>
+```
+
+### Help
+
+```shell
+$ forge --help
+$ anvil --help
+$ cast --help
+```

@@ -6,6 +6,8 @@ import '@typechain/hardhat';
 import "solidity-coverage";
 import "hardhat-abi-exporter";
 import "hardhat-gas-reporter";
+import "@nomicfoundation/hardhat-foundry";
+
 
 import * as fs from 'fs';
 import * as dotenv from 'dotenv'
