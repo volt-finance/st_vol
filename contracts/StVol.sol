@@ -167,7 +167,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
     modifier notContract() {
         //require(!_isContract(msg.sender), "E03"); //@audit remove this
-        require(msg.sender == tx.origin, "E03");
+        //require(msg.sender == tx.origin, "E03"); //@audit temp removal for testing
         _;
     }
 
@@ -280,7 +280,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
         // CurrentEpoch refers to previous round (n-1)
         _safeStartRound(currentEpoch, pythPrice);
-        //_placeLimitOrders(currentEpoch);
+        _placeLimitOrders(currentEpoch);
         _safeEndRound(currentEpoch - 1, pythPrice);
         _calculateRewards(currentEpoch - 1);
 
@@ -298,6 +298,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         pythPair[0] = priceId;
 
         uint256 fee = oracle.getUpdateFee(priceUpdateData);
+        //@audit no function to withdraw eth
         if (isFixed) {
             oracle.parsePriceFeedUpdates{value: fee}(priceUpdateData, pythPair, fixedTimestamp, fixedTimestamp + 10);
         } else {
@@ -306,6 +307,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         return (oracle.getPrice(priceId).price, oracle.getPrice(priceId).publishTime);
     }
 
+    // @audit why is initDate uint64?
     function genesisStartRound(bytes[] calldata priceUpdateData, uint64 initDate, bool isFixed)
         external
         payable
@@ -321,7 +323,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         lastCommittedPublishTime = publishTime;
 
         _safeStartRound(currentEpoch, pythPrice);
-        //_placeLimitOrders(currentEpoch);
+        _placeLimitOrders(currentEpoch);
 
         currentEpoch = currentEpoch + 1;
         _openRound(currentEpoch, initDate);
@@ -329,8 +331,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     function genesisOpenRound(uint256 initDate) external whenNotPaused onlyOperator {
-        //@audit added
-        require(genesisStartOnce, "");
         require(!genesisOpenOnce, "E33");
 
         currentEpoch = currentEpoch + 1;
@@ -589,4 +589,305 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     //    }
     //    return size > 0;
     //}
+
+        function participateLimitOver(
+        uint256 epoch,
+        uint256 _amount,
+        uint256 _payout
+    ) external whenNotPaused nonReentrant notContract {
+        require(epoch == currentEpoch, "E07");
+        require(_participable(epoch), "E08");
+        require(
+            _amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT,
+            "E09"
+        );
+        require(_payout > BASE, "E20");
+        token.safeTransferFrom(msg.sender, address(this), _amount);
+
+        LimitOrder[] storage limitOrders = overLimitOrders[epoch];
+        limitOrders.push(
+            LimitOrder(
+                msg.sender,
+                _payout,
+                _amount,
+                block.timestamp,
+                LimitOrderStatus.Undeclared
+            )
+        );
+        emit ParticipateLimitOrder(msg.sender
+        , epoch
+        , _amount
+        , _payout
+        , block.timestamp
+        , Position.Over
+        , LimitOrderStatus.Undeclared);
+    }
+
+    /**
+     * @notice Participate under limit position
+     */
+    function participateLimitUnder(
+        uint256 epoch,
+        uint256 _amount,
+        uint256 _payout
+    ) external whenNotPaused nonReentrant notContract {
+        require(epoch == currentEpoch, "E07");
+        require(_participable(epoch), "E08");
+        require(
+            _amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT,
+            "E09"
+        );
+        require(_payout > BASE, "E20");
+        token.safeTransferFrom(msg.sender, address(this), _amount);
+
+        LimitOrder[] storage limitOrders = underLimitOrders[epoch];
+        limitOrders.push(
+            LimitOrder(
+                msg.sender,
+                _payout,
+                _amount,
+                block.timestamp,
+                LimitOrderStatus.Undeclared
+            )
+        );
+        emit ParticipateLimitOrder(msg.sender
+        , epoch
+        , _amount
+        , _payout
+        , block.timestamp
+        , Position.Under
+        , LimitOrderStatus.Undeclared);
+    }
+
+    function cancelLimitOrder(
+        uint256 epoch,
+        Position position,
+        uint256 blockTimestamp,
+        uint256 amount
+    ) external nonReentrant notContract {
+        require(rounds[epoch].openTimestamp != 0,
+            "E21"
+        );
+        require(block.timestamp < rounds[epoch].startTimestamp,
+            "E22"
+        );
+
+        if (position == Position.Over) {
+            for (uint256 i = 0; i < overLimitOrders[epoch].length; i++) {
+                if (overLimitOrders[epoch][i].user == msg.sender
+                    && overLimitOrders[epoch][i].blockTimestamp == blockTimestamp
+                    && overLimitOrders[epoch][i].amount == amount) {
+
+                    overLimitOrders[epoch][i].status = LimitOrderStatus.Cancelled;
+                    if (overLimitOrders[epoch][i].amount > 0) {
+                        token.safeTransfer(msg.sender, overLimitOrders[epoch][i].amount);
+                    }
+                    emit ParticipateLimitOrder(msg.sender
+                    , epoch
+                    , overLimitOrders[epoch][i].amount
+                    , overLimitOrders[epoch][i].payout
+                    , overLimitOrders[epoch][i].blockTimestamp
+                    , position
+                    , LimitOrderStatus.Cancelled);
+                    break;
+                }
+            }
+        } else {
+            for (uint256 i = 0; i < underLimitOrders[epoch].length; i++) {
+                if (underLimitOrders[epoch][i].user == msg.sender
+                    && underLimitOrders[epoch][i].blockTimestamp == blockTimestamp
+                    && underLimitOrders[epoch][i].amount == amount) {
+
+                    underLimitOrders[epoch][i].status = LimitOrderStatus.Cancelled;
+                    if (underLimitOrders[epoch][i].amount > 0) {
+                        token.safeTransfer(msg.sender, underLimitOrders[epoch][i].amount);
+                    }
+                    emit ParticipateLimitOrder(msg.sender
+                    , epoch
+                    , underLimitOrders[epoch][i].amount
+                    , underLimitOrders[epoch][i].payout
+                    , underLimitOrders[epoch][i].blockTimestamp
+                    , position
+                    , LimitOrderStatus.Cancelled);
+                    break;
+                }
+            }
+        }
+    }
+
+    function _placeLimitOrders(uint256 epoch) internal {
+        RoundAmount memory ra = RoundAmount(
+            rounds[epoch].totalAmount,
+            rounds[epoch].overAmount,
+            rounds[epoch].underAmount
+        );
+
+        bool applyPayout = false;
+        LimitOrder[] memory sortedOverLimitOrders = _sortByPayout(
+            overLimitOrders[epoch]
+        );
+        LimitOrder[] memory sortedUnderLimitOrders = _sortByPayout(
+            underLimitOrders[epoch]
+        );
+
+        do {
+            // proc over limit orders
+            for (uint overOffset = 0; overOffset < sortedOverLimitOrders.length; overOffset++) {
+                uint expectedPayout = ((ra.totalAmount +
+                    sortedOverLimitOrders[overOffset].amount) * BASE) /
+                    (ra.overAmount + sortedOverLimitOrders[overOffset].amount);
+                if (
+                    sortedOverLimitOrders[overOffset].payout <= expectedPayout
+                    && sortedOverLimitOrders[overOffset].status == LimitOrderStatus.Undeclared
+                ) {
+                    ra.totalAmount =
+                        ra.totalAmount +
+                        sortedOverLimitOrders[overOffset].amount;
+                    ra.overAmount =
+                        ra.overAmount +
+                        sortedOverLimitOrders[overOffset].amount;
+                    sortedOverLimitOrders[overOffset].status = LimitOrderStatus
+                        .Approve;
+                }
+            }
+
+            applyPayout = false;
+            // proc under limit orders
+            for (uint underOffset = 0; underOffset < sortedUnderLimitOrders.length; underOffset++) {
+                uint expectedPayout = ((ra.totalAmount +
+                    sortedUnderLimitOrders[underOffset].amount) * BASE) /
+                    (ra.underAmount +
+                        sortedUnderLimitOrders[underOffset].amount);
+                if (
+                    sortedUnderLimitOrders[underOffset].payout <= expectedPayout
+                    && sortedUnderLimitOrders[underOffset].status == LimitOrderStatus.Undeclared
+                ) {
+                    ra.totalAmount =
+                        ra.totalAmount +
+                        sortedUnderLimitOrders[underOffset].amount;
+                    ra.underAmount =
+                        ra.underAmount +
+                        sortedUnderLimitOrders[underOffset].amount;
+                    sortedUnderLimitOrders[underOffset]
+                        .status = LimitOrderStatus.Approve;
+                    applyPayout = true;
+                }
+            }
+        } while (applyPayout);
+
+        for (uint i = 0; i < sortedOverLimitOrders.length; i++) {
+            if ( sortedOverLimitOrders[i].status == LimitOrderStatus.Cancelled) continue;
+            for (uint j = 0; j < overLimitOrders[epoch].length; j++) {
+                if (
+                    sortedOverLimitOrders[i].user ==
+                    overLimitOrders[epoch][j].user &&
+                    sortedOverLimitOrders[i].blockTimestamp ==
+                    overLimitOrders[epoch][j].blockTimestamp
+                ) {
+                    if (sortedOverLimitOrders[i].status == LimitOrderStatus.Undeclared) {
+                        // refund participate amount to user
+                        overLimitOrders[epoch][j].status = LimitOrderStatus.Cancelled;
+                        token.safeTransfer(
+                            sortedOverLimitOrders[i].user,
+                            sortedOverLimitOrders[i].amount
+                        );
+                        emit ParticipateLimitOrder(
+                            sortedOverLimitOrders[i].user
+                            , epoch
+                            , sortedOverLimitOrders[i].amount
+                            , sortedOverLimitOrders[i].payout
+                            , sortedOverLimitOrders[i].blockTimestamp
+                            , Position.Over
+                            , LimitOrderStatus.Cancelled);
+                        break;
+                    }
+                    if (sortedOverLimitOrders[i].status == LimitOrderStatus.Approve) {
+                        overLimitOrders[epoch][j].status = LimitOrderStatus.Approve;
+                        _participate(
+                            epoch,
+                            Position.Over,
+                            sortedOverLimitOrders[i].user,
+                            sortedOverLimitOrders[i].amount
+                        );
+                        emit ParticipateLimitOrder(
+                            sortedOverLimitOrders[i].user
+                            , epoch
+                            , sortedOverLimitOrders[i].amount
+                            , sortedOverLimitOrders[i].payout
+                            , sortedOverLimitOrders[i].blockTimestamp
+                            , Position.Over
+                            , LimitOrderStatus.Approve);
+                        break;
+                    }
+                }
+            }
+        }
+        for (uint i = 0; i < sortedUnderLimitOrders.length; i++) {
+            if ( sortedUnderLimitOrders[i].status == LimitOrderStatus.Cancelled) continue;
+            for (uint j = 0; j < underLimitOrders[epoch].length; j++) {
+                if (
+                    sortedUnderLimitOrders[i].user ==
+                    underLimitOrders[epoch][j].user &&
+                    sortedUnderLimitOrders[i].blockTimestamp ==
+                    underLimitOrders[epoch][j].blockTimestamp
+                ) {
+
+                    if (sortedUnderLimitOrders[i].status == LimitOrderStatus.Undeclared) {
+                        // refund participate amount to user
+                        underLimitOrders[epoch][j].status = LimitOrderStatus.Cancelled;
+                        token.safeTransfer(
+                            sortedUnderLimitOrders[i].user,
+                            sortedUnderLimitOrders[i].amount
+                        );
+                        emit ParticipateLimitOrder(
+                            sortedUnderLimitOrders[i].user
+                            , epoch
+                            , sortedUnderLimitOrders[i].amount
+                            , sortedUnderLimitOrders[i].payout
+                            , sortedUnderLimitOrders[i].blockTimestamp
+                            , Position.Under
+                            , LimitOrderStatus.Cancelled);
+                        break;
+                    }
+                    if (sortedUnderLimitOrders[i].status == LimitOrderStatus.Approve) {
+                        underLimitOrders[epoch][j].status = LimitOrderStatus.Approve;
+                        _participate(
+                            epoch,
+                            Position.Under,
+                            sortedUnderLimitOrders[i].user,
+                            sortedUnderLimitOrders[i].amount
+                        );
+                        emit ParticipateLimitOrder(
+                            sortedUnderLimitOrders[i].user
+                            , epoch
+                            , sortedUnderLimitOrders[i].amount
+                            , sortedUnderLimitOrders[i].payout
+                            , sortedUnderLimitOrders[i].blockTimestamp
+                            , Position.Under
+                            , LimitOrderStatus.Approve);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    function _sortByPayout(
+        LimitOrder[] memory items
+    ) internal pure returns (LimitOrder[] memory) {
+        for (uint i = 1; i < items.length; i++)
+            for (uint j = 0; j < i; j++)
+                if (items[i].payout < items[j].payout) {
+                    LimitOrder memory x = items[i];
+                    items[i] = items[j];
+                    items[j] = x;
+                }
+
+        return items;
+    }
+
+    //@audit temp function to test
+    function getRound(uint256 epoch) public view returns (Round memory) {
+        return rounds[epoch];
+    }
 }
