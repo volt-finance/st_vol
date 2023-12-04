@@ -166,7 +166,7 @@ contract StVolTest is Test {
     }
 
     function testBetArray(BetConfig[] memory config) external {
-        vm.assume(config.length > 0);
+        vm.assume(config.length > 0 && config.length < 1000);
         config[0] = sanitize(config[0]);
         openGenesis(config[0]);
         bet(1, config[0]);
@@ -182,20 +182,20 @@ contract StVolTest is Test {
     function openGenesis(BetConfig memory config) internal {
         vm.startPrank(operator);
         updatePrice(1000);
-        assertEq(stvol.currentEpoch(), 0);
+        uint256 before = stvol.currentEpoch();
         // Epoch - 1, genesis(round 1) Open
         stvol.genesisOpenRound(block.timestamp - 10);
-        assertEq(stvol.currentEpoch(), 1);
+        assertEq(stvol.currentEpoch(), before + 1);
         vm.stopPrank();
     }
 
     function startGenesis(BetConfig memory config) internal {
         vm.startPrank(operator);
-
         // Epoch - 2, genesis(round 1) Start, round 2 open
         vm.warp(block.timestamp + 86400);
+        uint256 before = stvol.currentEpoch();
         stvol.genesisStartRound(data, uint64(block.timestamp - 10), false); // TODO what is isFixed?
-        assertEq(stvol.currentEpoch(), 2);
+        assertEq(stvol.currentEpoch(), before + 1);
         vm.stopPrank();
     }
 
@@ -229,5 +229,52 @@ contract StVolTest is Test {
         startGenesis(config);
         
         executeRound(1, config);
+    }
+
+    function getRefunded(uint256 round, BetConfig memory config) internal {
+        for(uint256 i = 0; i < config.betUp; i++) {
+            address user = makeAddr(string(abi.encodePacked("up", itoa(i))));
+            uint256 bal = usdc.balanceOf(user);
+            vm.startPrank(user);
+            stvol.claim(round, StVol.Position.Over);
+            bal = usdc.balanceOf(user) - bal;
+            vm.stopPrank();
+            assertEq(bal, config.betUpAmount / config.betUp);
+        }
+        for(uint256 i = 0; i < config.betDown; i++) {
+            address user = makeAddr(string(abi.encodePacked("down", itoa(i))));
+            uint256 bal = usdc.balanceOf(user);
+            vm.startPrank(user);
+            stvol.claim(round, StVol.Position.Under);
+            bal = usdc.balanceOf(user) - bal;
+            vm.stopPrank();
+            assertEq(bal, config.betDownAmount / config.betDown);
+        }
+    }
+
+    function testPause(BetConfig[4] memory config) public {
+        config[0] = sanitize(config[0]);
+        openGenesis(config[0]);
+        bet(1, config[0]);
+        startGenesis(config[0]);
+
+        config[1] = sanitize(config[1]);
+        bet(2, config[1]);
+
+        // pause
+        vm.startPrank(admin);
+        stvol.pause();
+        stvol.unpause();
+        vm.stopPrank();
+
+        config[2] = sanitize(config[2]);
+        openGenesis(config[2]);
+        bet(3, config[2]);
+        startGenesis(config[2]);
+
+        executeRound(3, config[2]);
+        getRefunded(1, config[0]);
+        vm.warp(block.timestamp + 86400);
+        getRefunded(2, config[1]);
     }
 }

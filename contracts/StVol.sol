@@ -167,7 +167,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
     modifier notContract() {
         //require(!_isContract(msg.sender), "E03"); //@audit remove this
-        //require(msg.sender == tx.origin, "E03"); //@audit temp removal for testing
+        require(msg.sender == tx.origin, "E03"); //@audit temp removal for testing EIP 3074
         _;
     }
 
@@ -213,8 +213,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         require(_participable(epoch), "E08");
         require(_amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT, "E09");
 
-        token.safeTransferFrom(msg.sender, address(this), _amount);
         _participate(epoch, Position.Under, msg.sender, _amount);
+        token.safeTransferFrom(msg.sender, address(this), _amount); // Reentrancy erc20 erc777
     }
 
     function participateOver(uint256 epoch, uint256 _amount) external whenNotPaused nonReentrant notContract {
