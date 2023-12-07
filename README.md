@@ -7,12 +7,12 @@ Digital option market for crypto trade on 1 day price change
 
 ## Documentation
 
-## Oracle Price Feed (Chainlink)
+## Oracle Price Feed (Pyth)
 
 ### ETH/USD
 
-- Mainnet: 
-- Goerli: 
+- Arbitrum: `0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace` 
+- Arbitrum Goerli: `0xca80ba6dc32e08d06f1aa886011eed1d77c77be9eb761cc10d72b7d0a2fd57a6`
 
 ## Deployment
 
