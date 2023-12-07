@@ -62,10 +62,4 @@ export default {
     arbitrum: 200, // 2%
     arbitrum_goerli: 200 // 2%
   },
-  OperateRate: {
-    mainnet: 10000, // 100%
-    goerli: 10000, // 100%
-    arbitrum: 10000, // 100%
-    arbitrum_goerli: 10000 // 100%
-  },
 };

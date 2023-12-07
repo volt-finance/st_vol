@@ -23,12 +23,6 @@ const main = async () => {
     ) {
       throw new Error("Missing addresses (Chainlink Oracle and/or Admin/Operator)");
     }
-    // Check if the distribute total rate in the config is 10000 
-    if (
-      config.OperateRate[networkName] !== 10000
-    ) {
-      throw new Error("Distribute total rate must be 10000 (100%)");
-    }
 
     // Compile contracts.
     await run("compile");
@@ -41,7 +35,6 @@ const main = async () => {
     console.log("Operator: %s", config.Address.Operator[networkName]);
     console.log("Operator Vault: %s", config.Address.OperatorVault[networkName]);
     console.log("CommissionFee: %s", config.CommissionFee[networkName]);
-    console.log("OperateRate: %s", config.OperateRate[networkName]);
     console.log("===========================================");
 
     // Deploy contracts.
@@ -53,7 +46,6 @@ const main = async () => {
       config.Address.Operator[networkName],
       config.Address.OperatorVault[networkName],
       config.CommissionFee[networkName],
-      config.OperateRate[networkName],
       config.PythPriceId[networkName]['ETH_USD'],
     );
 
@@ -71,7 +63,6 @@ const main = async () => {
         config.Address.Operator[networkName],
         config.Address.OperatorVault[networkName],
         config.CommissionFee[networkName],
-        config.OperateRate[networkName],
         config.PythPriceId[networkName]['ETH_USD']
       ]
     });

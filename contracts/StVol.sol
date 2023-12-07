@@ -43,6 +43,8 @@ import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
  * E31: Cannot be zero address
  * E32: Can only run genesisStartRound once
  * E33: Pyth Oracle non increasing publishTimes
+ * E34: Strategy Rate must not be greater than 10000 (100%)
+ * E35: Exceed limit order size 
 */
 contract StVol is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -64,9 +66,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
     uint256 public commissionfee; // commission rate (e.g. 200 = 2%, 150 = 1.50%)
     uint256 public treasuryAmount; // treasury amount that was not claimed
-    uint256 public operateRate; // operate distribute rate (e.g. 200 = 2%, 150 = 1.50%)
     uint256 public participantRate; // participant distribute rate (e.g. 200 = 2%, 150 = 1.50%)
-    int256 public strategyRate; // strategy rate (e.g. 100 = 1%)
+    uint256 public strategyRate; // strategy rate (e.g. 100 = 1%)
     StrategyType public strategyType; // strategy type
     uint256 public currentEpoch; // current epoch for round
     uint256 public constant BASE = 10000; // 100%
@@ -74,7 +75,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     uint256 public constant DEFAULT_MIN_PARTICIPATE_AMOUNT = 1000000; // 1 USDC
     uint256 public constant DEFAULT_INTERVAL_SECONDS = 86400; // 24 * 60 * 60 * 1(1day)
     uint256 public constant DEFAULT_BUFFER_SECONDS = 600; // 60 * 10 (10min)
-    uint256 public lastCommittedPublishTime; // time when the last committed update was published to Pyth
+    uint256 public constant MAX_LIMIT_ORDERS = 50; // maximum limit order size
 
     struct LimitOrder {
         address user;
@@ -107,8 +108,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 openTimestamp;
         uint256 startTimestamp;
         uint256 closeTimestamp;
-        int256 startPrice;
-        int256 closePrice;
+        uint256 startPrice;
+        uint256 closePrice;
         uint256 startOracleId;
         uint256 closeOracleId;
         uint256 totalAmount;
@@ -154,8 +155,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         Position position,
         uint256 amount
     );
-    event EndRound(uint256 indexed epoch, int256 price);
-    event StartRound(uint256 indexed epoch, int256 price);
+    event EndRound(uint256 indexed epoch, uint256 price);
+    event StartRound(uint256 indexed epoch, uint256 price);
     event RewardsCalculated(
         uint256 indexed epoch,
         uint256 rewardBaseCalAmount,
@@ -164,7 +165,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     );
     event OpenRound(
         uint256 indexed epoch,
-        int256 strategyRate,
+        uint256 strategyRate,
         StrategyType strategyType
     );
     modifier onlyAdmin() {
@@ -188,8 +189,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         address _operatorAddress,
         address _operatorVaultAddress,
         uint256 _commissionfee,
-        uint256 _operateRate,
-        int256 _strategyRate,
+        uint256 _strategyRate,
         StrategyType _strategyType,
         bytes32 _priceId
     ) {
@@ -198,6 +198,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             "E04"
         );
         if (_strategyRate > 0) {
+            require(
+                _strategyRate <= BASE,
+                "E34"
+            );
             require(
                 _strategyType != StrategyType.None,
                 "E05"
@@ -215,7 +219,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         operatorAddress = _operatorAddress;
         operatorVaultAddress = _operatorVaultAddress;
         commissionfee = _commissionfee;
-        operateRate = _operateRate;
         strategyRate = _strategyRate;
         strategyType = _strategyType;
         priceId = _priceId;
@@ -323,13 +326,13 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             isFixed
         );
         require(
-            publishTime > lastCommittedPublishTime,
+            publishTime >= rounds[currentEpoch].startTimestamp - bufferSeconds 
+            && publishTime <= rounds[currentEpoch].startTimestamp + bufferSeconds,
             "E15"
         );
-        lastCommittedPublishTime = publishTime;
 
         // CurrentEpoch refers to previous round (n-1)
-        _safeStartRound(currentEpoch, pythPrice);
+        _safeStartRound(currentEpoch, uint64(pythPrice));
         _placeLimitOrders(currentEpoch);
         _safeEndRound(currentEpoch - 1, pythPrice);
         _calculateRewards(currentEpoch - 1);
@@ -353,7 +356,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 priceUpdateData,
                 pythPair,
                 fixedTimestamp,
-                fixedTimestamp + 10
+                fixedTimestamp + uint64(bufferSeconds) 
             );
         } else {
             oracle.updatePriceFeeds{value: fee}(priceUpdateData);
@@ -378,12 +381,12 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             isFixed
         );
         require(
-            publishTime > lastCommittedPublishTime,
+            publishTime >= rounds[currentEpoch].startTimestamp - bufferSeconds 
+            && publishTime <= rounds[currentEpoch].startTimestamp + bufferSeconds,
             "E15"
         );
-        lastCommittedPublishTime = publishTime;
 
-        _safeStartRound(currentEpoch, pythPrice);
+        _safeStartRound(currentEpoch, uint64(pythPrice));
         _placeLimitOrders(currentEpoch);
 
         currentEpoch = currentEpoch + 1;
@@ -408,12 +411,12 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     function claimTreasury() external nonReentrant onlyAdmin {
         uint256 currentTreasuryAmount = treasuryAmount;
         treasuryAmount = 0;
+        token.safeTransfer( operatorVaultAddress, currentTreasuryAmount);
+    }
 
-        // operator 100%
-        token.safeTransfer(
-            operatorVaultAddress,
-            (currentTreasuryAmount * operateRate) / BASE
-        );
+    function withdraw(uint amount) external onlyAdmin {
+        require(amount <= address(this).balance);
+        payable(adminAddress).transfer(address(this).balance);
     }
 
     function unpause() external whenPaused onlyAdmin {
@@ -602,12 +605,12 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     function _getStrategyRatePrice(
-        int256 price
-    ) internal view returns (int256) {
+        uint256 price
+    ) internal view returns (uint256) {
         if (strategyType == StrategyType.Up) {
-            return price + (price * strategyRate) / int256(BASE);
+            return price + (price * strategyRate) / uint256(BASE);
         } else if (strategyType == StrategyType.Down) {
-            return price - (price * strategyRate) / int256(BASE);
+            return price - (price * strategyRate) / uint256(BASE);
         } else {
             return price;
         }
@@ -626,13 +629,13 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             block.timestamp <= rounds[epoch].closeTimestamp + bufferSeconds,
             "E28"
         );
-        rounds[epoch].closePrice = price;
+        rounds[epoch].closePrice = uint256(price);
         rounds[epoch].oracleCalled = true;
 
         emit EndRound(epoch, rounds[epoch].closePrice);
     }
 
-    function _safeStartRound(uint256 epoch, int256 price) internal {
+    function _safeStartRound(uint256 epoch, uint256 price) internal {
         require(
             rounds[epoch].openTimestamp != 0,
             "E23"
@@ -743,6 +746,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             "E09"
         );
         require(_payout > BASE, "E20");
+        require(overLimitOrders[epoch].length <= MAX_LIMIT_ORDERS, "E35");
+
         token.safeTransferFrom(msg.sender, address(this), _amount);
 
         LimitOrder[] storage limitOrders = overLimitOrders[epoch];
@@ -779,6 +784,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             "E09"
         );
         require(_payout > BASE, "E20");
+        require(underLimitOrders[epoch].length <= MAX_LIMIT_ORDERS, "E35");
+
         token.safeTransferFrom(msg.sender, address(this), _amount);
 
         LimitOrder[] storage limitOrders = underLimitOrders[epoch];

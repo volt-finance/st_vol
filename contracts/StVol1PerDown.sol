@@ -13,7 +13,6 @@ contract StVol1PerDown is StVol {
         address _operatorAddress,
         address _operatorVaultAddress,
         uint256 _commissionfee,
-        uint256 _operateRate,
         bytes32 _priceId
     ) 
     StVol(
@@ -23,7 +22,6 @@ contract StVol1PerDown is StVol {
         _operatorAddress,
         _operatorVaultAddress,
         _commissionfee,
-        _operateRate,
         100, // 100: 1%
         StVol.StrategyType.Down,
         _priceId
