@@ -334,7 +334,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         // CurrentEpoch refers to previous round (n-1)
         _safeStartRound(currentEpoch, uint64(pythPrice));
         _placeLimitOrders(currentEpoch);
-        _safeEndRound(currentEpoch - 1, pythPrice);
+        _safeEndRound(currentEpoch - 1, uint64(pythPrice));
         _calculateRewards(currentEpoch - 1);
 
         // Increment currentEpoch to current round (n)
@@ -616,7 +616,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         }
     }
 
-    function _safeEndRound(uint256 epoch, int256 price) internal {
+    function _safeEndRound(uint256 epoch, uint256 price) internal {
         require(
             rounds[epoch].startTimestamp != 0,
             "E26"
