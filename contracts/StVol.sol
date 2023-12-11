@@ -9,7 +9,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
-/** 
+
+/**
  * E01: Not admin
  * E02: Not operator
  * E03: Contract not allowed
@@ -44,8 +45,8 @@ import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
  * E32: Can only run genesisStartRound once
  * E33: Pyth Oracle non increasing publishTimes
  * E34: Strategy Rate must not be greater than 10000 (100%)
- * E35: Exceed limit order size 
-*/
+ * E35: Exceed limit order size
+ */
 contract StVol is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -91,7 +92,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
     mapping(uint256 => LimitOrder[]) public overLimitOrders;
     mapping(uint256 => LimitOrder[]) public underLimitOrders;
-    mapping(uint256 => mapping(Position => mapping(address => ParticipateInfo))) public ledger;
+    mapping(uint256 => mapping(Position => mapping(address => ParticipateInfo)))
+        public ledger;
     mapping(uint256 => Round) public rounds;
     mapping(address => uint256[]) public userRounds;
     enum Position {
@@ -193,22 +195,13 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         StrategyType _strategyType,
         bytes32 _priceId
     ) {
-        require(
-            _commissionfee <= MAX_COMMISSION_FEE,
-            "E04"
-        );
+        require(_commissionfee <= MAX_COMMISSION_FEE, "E04");
         if (_strategyRate > 0) {
-            require(
-                _strategyRate <= BASE,
-                "E34"
-            );
-            require(
-                _strategyType != StrategyType.None,
-                "E05"
-            );
+            require(_strategyRate <= BASE, "E34");
+            require(_strategyType != StrategyType.None, "E05");
         } else {
             require(
-                _strategyType == StrategyType.None,
+                _strategyType == StrategyType.None && _strategyRate == 0,
                 "E06"
             );
         }
@@ -233,10 +226,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     ) external whenNotPaused nonReentrant notContract {
         require(epoch == currentEpoch, "E07");
         require(_participable(epoch), "E08");
-        require(
-            _amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT,
-            "E09"
-        );
+        require(_amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT, "E09");
 
         token.safeTransferFrom(msg.sender, address(this), _amount);
         _participate(epoch, Position.Under, msg.sender, _amount);
@@ -248,10 +238,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     ) external whenNotPaused nonReentrant notContract {
         require(epoch == currentEpoch, "E07");
         require(_participable(epoch), "E08");
-        require(
-            _amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT,
-            "E09"
-        );
+        require(_amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT, "E09");
 
         token.safeTransferFrom(msg.sender, address(this), _amount);
         _participate(epoch, Position.Over, msg.sender, _amount);
@@ -264,20 +251,15 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 reward; // Initializes reward
 
         require(rounds[epoch].openTimestamp != 0, "E10");
-        require(
-            block.timestamp > rounds[epoch].closeTimestamp,
-            "E11"
-        );
+        require(block.timestamp > rounds[epoch].closeTimestamp, "E11");
 
         uint256 addedReward = 0;
         // Round valid, claim rewards
         if (rounds[epoch].oracleCalled) {
-            require(
-                claimable(epoch, position, msg.sender),
-                "E12"
-            );
+            require(claimable(epoch, position, msg.sender), "E12");
             if (
-                (rounds[epoch].overAmount > 0 && rounds[epoch].underAmount > 0) &&
+                (rounds[epoch].overAmount > 0 &&
+                    rounds[epoch].underAmount > 0) &&
                 (rounds[epoch].startPrice != rounds[epoch].closePrice)
             ) {
                 addedReward +=
@@ -287,10 +269,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             }
         } else {
             // Round invalid, refund Participate amount
-            require(
-                refundable(epoch, position, msg.sender),
-                "E13"
-            );
+            require(refundable(epoch, position, msg.sender), "E13");
         }
         ledger[epoch][position][msg.sender].claimed = true;
         reward = ledger[epoch][position][msg.sender].amount + addedReward;
@@ -315,10 +294,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint64 initDate,
         bool isFixed
     ) external payable whenNotPaused onlyOperator {
-        require(
-            genesisOpenOnce && genesisStartOnce,
-            "E14"
-        );
+        require(genesisOpenOnce && genesisStartOnce, "E14");
 
         (int64 pythPrice, uint publishTime) = _getPythPrice(
             priceUpdateData,
@@ -326,8 +302,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             isFixed
         );
         require(
-            publishTime >= rounds[currentEpoch].startTimestamp - bufferSeconds 
-            && publishTime <= rounds[currentEpoch].startTimestamp + bufferSeconds,
+            publishTime >=
+                rounds[currentEpoch].startTimestamp - bufferSeconds &&
+                publishTime <=
+                rounds[currentEpoch].startTimestamp + bufferSeconds,
             "E15"
         );
 
@@ -356,12 +334,15 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 priceUpdateData,
                 pythPair,
                 fixedTimestamp,
-                fixedTimestamp + uint64(bufferSeconds) 
+                fixedTimestamp + uint64(bufferSeconds)
             );
         } else {
             oracle.updatePriceFeeds{value: fee}(priceUpdateData);
         }
-        return (oracle.getPrice(priceId).price, oracle.getPrice(priceId).publishTime);
+        return (
+            oracle.getPrice(priceId).price,
+            oracle.getPrice(priceId).publishTime
+        );
     }
 
     function genesisStartRound(
@@ -369,10 +350,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint64 initDate,
         bool isFixed
     ) external payable whenNotPaused onlyOperator {
-        require(
-            genesisOpenOnce,
-            "E16"
-        );
+        require(genesisOpenOnce, "E16");
         require(!genesisStartOnce, "E32");
 
         (int64 pythPrice, uint publishTime) = _getPythPrice(
@@ -381,8 +359,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             isFixed
         );
         require(
-            publishTime >= rounds[currentEpoch].startTimestamp - bufferSeconds 
-            && publishTime <= rounds[currentEpoch].startTimestamp + bufferSeconds,
+            publishTime >=
+                rounds[currentEpoch].startTimestamp - bufferSeconds &&
+                publishTime <=
+                rounds[currentEpoch].startTimestamp + bufferSeconds,
             "E15"
         );
 
@@ -411,7 +391,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     function claimTreasury() external nonReentrant onlyAdmin {
         uint256 currentTreasuryAmount = treasuryAmount;
         treasuryAmount = 0;
-        token.safeTransfer( operatorVaultAddress, currentTreasuryAmount);
+        token.safeTransfer(operatorVaultAddress, currentTreasuryAmount);
     }
 
     function withdraw(uint amount) external onlyAdmin {
@@ -429,36 +409,35 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 _bufferSeconds,
         uint256 _intervalSeconds
     ) external whenPaused onlyAdmin {
-        require(
-            _bufferSeconds < _intervalSeconds,
-            "E30"
-        );
+        require(_bufferSeconds < _intervalSeconds, "E30");
         bufferSeconds = _bufferSeconds;
         intervalSeconds = _intervalSeconds;
     }
+
     function setOperator(address _operatorAddress) external onlyAdmin {
         require(_operatorAddress != address(0), "E31");
         operatorAddress = _operatorAddress;
     }
+
     function setOperatorVault(
         address _operatorVaultAddress
     ) external onlyAdmin {
         require(_operatorVaultAddress != address(0), "E31");
         operatorVaultAddress = _operatorVaultAddress;
     }
+
     function setOracle(address _oracle) external whenPaused onlyAdmin {
         require(_oracle != address(0), "E31");
         oracle = IPyth(_oracle);
     }
+
     function setCommissionfee(
         uint256 _commissionfee
     ) external whenPaused onlyAdmin {
-        require(
-            _commissionfee <= MAX_COMMISSION_FEE,
-            "E04"
-        );
+        require(_commissionfee <= MAX_COMMISSION_FEE, "E04");
         commissionfee = _commissionfee;
     }
+
     function setAdmin(address _adminAddress) external onlyOwner {
         require(_adminAddress != address(0), "E31");
         adminAddress = _adminAddress;
@@ -617,14 +596,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     function _safeEndRound(uint256 epoch, uint256 price) internal {
-        require(
-            rounds[epoch].startTimestamp != 0,
-            "E26"
-        );
-        require(
-            block.timestamp >= rounds[epoch].closeTimestamp,
-            "E27"
-        );
+        require(rounds[epoch].startTimestamp != 0, "E26");
+        require(block.timestamp >= rounds[epoch].closeTimestamp, "E27");
         require(
             block.timestamp <= rounds[epoch].closeTimestamp + bufferSeconds,
             "E28"
@@ -636,14 +609,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     function _safeStartRound(uint256 epoch, uint256 price) internal {
-        require(
-            rounds[epoch].openTimestamp != 0,
-            "E23"
-        );
-        require(
-            block.timestamp >= rounds[epoch].startTimestamp,
-            "E24"
-        );
+        require(rounds[epoch].openTimestamp != 0, "E23");
+        require(block.timestamp >= rounds[epoch].startTimestamp, "E24");
         require(
             block.timestamp <= rounds[epoch].startTimestamp + bufferSeconds,
             "E25"
@@ -653,30 +620,15 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     function _safeOpenRound(uint256 epoch, uint256 initDate) internal {
-        require(
-            genesisOpenOnce,
-            "E16"
-        );
-        require(
-            rounds[epoch - 2].closeTimestamp != 0,
-            "E17"
-        );
-        require(
-            block.timestamp >= rounds[epoch - 2].closeTimestamp,
-            "E18"
-        );
-        require(
-            block.timestamp >= initDate,
-            "E19"
-        );
+        require(genesisOpenOnce, "E16");
+        require(rounds[epoch - 2].closeTimestamp != 0, "E17");
+        require(block.timestamp >= rounds[epoch - 2].closeTimestamp, "E18");
+        require(block.timestamp >= initDate, "E19");
         _openRound(epoch, initDate);
     }
 
     function _openRound(uint256 epoch, uint256 initDate) internal {
-        require(
-            block.timestamp >= initDate,
-            "E19"
-        );
+        require(block.timestamp >= initDate, "E19");
 
         rounds[epoch].openTimestamp = initDate;
         rounds[epoch].startTimestamp = initDate + intervalSeconds;
@@ -741,10 +693,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     ) external whenNotPaused nonReentrant notContract {
         require(epoch == currentEpoch, "E07");
         require(_participable(epoch), "E08");
-        require(
-            _amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT,
-            "E09"
-        );
+        require(_amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT, "E09");
         require(_payout > BASE, "E20");
         require(overLimitOrders[epoch].length <= MAX_LIMIT_ORDERS, "E35");
 
@@ -760,13 +709,15 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 LimitOrderStatus.Undeclared
             )
         );
-        emit ParticipateLimitOrder(msg.sender
-        , epoch
-        , _amount
-        , _payout
-        , block.timestamp
-        , Position.Over
-        , LimitOrderStatus.Undeclared);
+        emit ParticipateLimitOrder(
+            msg.sender,
+            epoch,
+            _amount,
+            _payout,
+            block.timestamp,
+            Position.Over,
+            LimitOrderStatus.Undeclared
+        );
     }
 
     /**
@@ -779,10 +730,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     ) external whenNotPaused nonReentrant notContract {
         require(epoch == currentEpoch, "E07");
         require(_participable(epoch), "E08");
-        require(
-            _amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT,
-            "E09"
-        );
+        require(_amount >= DEFAULT_MIN_PARTICIPATE_AMOUNT, "E09");
         require(_payout > BASE, "E20");
         require(underLimitOrders[epoch].length <= MAX_LIMIT_ORDERS, "E35");
 
@@ -798,13 +746,15 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 LimitOrderStatus.Undeclared
             )
         );
-        emit ParticipateLimitOrder(msg.sender
-        , epoch
-        , _amount
-        , _payout
-        , block.timestamp
-        , Position.Under
-        , LimitOrderStatus.Undeclared);
+        emit ParticipateLimitOrder(
+            msg.sender,
+            epoch,
+            _amount,
+            _payout,
+            block.timestamp,
+            Position.Under,
+            LimitOrderStatus.Undeclared
+        );
     }
 
     function cancelLimitOrder(
@@ -813,50 +763,62 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 blockTimestamp,
         uint256 amount
     ) external nonReentrant notContract {
-        require(rounds[epoch].openTimestamp != 0,
-            "E21"
-        );
-        require(block.timestamp < rounds[epoch].startTimestamp,
-            "E22"
-        );
+        require(rounds[epoch].openTimestamp != 0, "E21");
+        require(block.timestamp < rounds[epoch].startTimestamp, "E22");
 
         if (position == Position.Over) {
             for (uint256 i = 0; i < overLimitOrders[epoch].length; i++) {
-                if (overLimitOrders[epoch][i].user == msg.sender
-                    && overLimitOrders[epoch][i].blockTimestamp == blockTimestamp
-                    && overLimitOrders[epoch][i].amount == amount) {
-
-                    overLimitOrders[epoch][i].status = LimitOrderStatus.Cancelled;    
+                if (
+                    overLimitOrders[epoch][i].user == msg.sender &&
+                    overLimitOrders[epoch][i].blockTimestamp ==
+                    blockTimestamp &&
+                    overLimitOrders[epoch][i].amount == amount
+                ) {
+                    overLimitOrders[epoch][i].status = LimitOrderStatus
+                        .Cancelled;
                     if (overLimitOrders[epoch][i].amount > 0) {
-                        token.safeTransfer(msg.sender, overLimitOrders[epoch][i].amount);
+                        token.safeTransfer(
+                            msg.sender,
+                            overLimitOrders[epoch][i].amount
+                        );
                     }
-                    emit ParticipateLimitOrder(msg.sender
-                    , epoch
-                    , overLimitOrders[epoch][i].amount
-                    , overLimitOrders[epoch][i].payout
-                    , overLimitOrders[epoch][i].blockTimestamp
-                    , position
-                    , LimitOrderStatus.Cancelled);
+                    emit ParticipateLimitOrder(
+                        msg.sender,
+                        epoch,
+                        overLimitOrders[epoch][i].amount,
+                        overLimitOrders[epoch][i].payout,
+                        overLimitOrders[epoch][i].blockTimestamp,
+                        position,
+                        LimitOrderStatus.Cancelled
+                    );
                     break;
                 }
             }
         } else {
             for (uint256 i = 0; i < underLimitOrders[epoch].length; i++) {
-                if (underLimitOrders[epoch][i].user == msg.sender
-                    && underLimitOrders[epoch][i].blockTimestamp == blockTimestamp
-                    && underLimitOrders[epoch][i].amount == amount) {
-
-                    underLimitOrders[epoch][i].status = LimitOrderStatus.Cancelled;    
+                if (
+                    underLimitOrders[epoch][i].user == msg.sender &&
+                    underLimitOrders[epoch][i].blockTimestamp ==
+                    blockTimestamp &&
+                    underLimitOrders[epoch][i].amount == amount
+                ) {
+                    underLimitOrders[epoch][i].status = LimitOrderStatus
+                        .Cancelled;
                     if (underLimitOrders[epoch][i].amount > 0) {
-                        token.safeTransfer(msg.sender, underLimitOrders[epoch][i].amount);
+                        token.safeTransfer(
+                            msg.sender,
+                            underLimitOrders[epoch][i].amount
+                        );
                     }
-                    emit ParticipateLimitOrder(msg.sender
-                    , epoch
-                    , underLimitOrders[epoch][i].amount
-                    , underLimitOrders[epoch][i].payout
-                    , underLimitOrders[epoch][i].blockTimestamp
-                    , position
-                    , LimitOrderStatus.Cancelled);
+                    emit ParticipateLimitOrder(
+                        msg.sender,
+                        epoch,
+                        underLimitOrders[epoch][i].amount,
+                        underLimitOrders[epoch][i].payout,
+                        underLimitOrders[epoch][i].blockTimestamp,
+                        position,
+                        LimitOrderStatus.Cancelled
+                    );
                     break;
                 }
             }
@@ -880,13 +842,19 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
         do {
             // proc over limit orders
-            for (uint overOffset = 0; overOffset < sortedOverLimitOrders.length; overOffset++) {
+            for (
+                uint overOffset = 0;
+                overOffset < sortedOverLimitOrders.length;
+                overOffset++
+            ) {
                 uint expectedPayout = ((ra.totalAmount +
                     sortedOverLimitOrders[overOffset].amount) * BASE) /
                     (ra.overAmount + sortedOverLimitOrders[overOffset].amount);
                 if (
-                    sortedOverLimitOrders[overOffset].payout <= expectedPayout 
-                    && sortedOverLimitOrders[overOffset].status == LimitOrderStatus.Undeclared
+                    sortedOverLimitOrders[overOffset].payout <=
+                    expectedPayout &&
+                    sortedOverLimitOrders[overOffset].status ==
+                    LimitOrderStatus.Undeclared
                 ) {
                     ra.totalAmount =
                         ra.totalAmount +
@@ -901,14 +869,20 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
             applyPayout = false;
             // proc under limit orders
-            for (uint underOffset = 0; underOffset < sortedUnderLimitOrders.length; underOffset++) {
+            for (
+                uint underOffset = 0;
+                underOffset < sortedUnderLimitOrders.length;
+                underOffset++
+            ) {
                 uint expectedPayout = ((ra.totalAmount +
                     sortedUnderLimitOrders[underOffset].amount) * BASE) /
                     (ra.underAmount +
                         sortedUnderLimitOrders[underOffset].amount);
                 if (
-                    sortedUnderLimitOrders[underOffset].payout <= expectedPayout
-                    && sortedUnderLimitOrders[underOffset].status == LimitOrderStatus.Undeclared
+                    sortedUnderLimitOrders[underOffset].payout <=
+                    expectedPayout &&
+                    sortedUnderLimitOrders[underOffset].status ==
+                    LimitOrderStatus.Undeclared
                 ) {
                     ra.totalAmount =
                         ra.totalAmount +
@@ -924,33 +898,43 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         } while (applyPayout);
 
         for (uint i = 0; i < sortedOverLimitOrders.length; i++) {
-            if ( sortedOverLimitOrders[i].status == LimitOrderStatus.Cancelled) continue;
+            if (sortedOverLimitOrders[i].status == LimitOrderStatus.Cancelled)
+                continue;
             for (uint j = 0; j < overLimitOrders[epoch].length; j++) {
                 if (
                     sortedOverLimitOrders[i].user ==
                     overLimitOrders[epoch][j].user &&
                     sortedOverLimitOrders[i].blockTimestamp ==
-                    overLimitOrders[epoch][j].blockTimestamp 
+                    overLimitOrders[epoch][j].blockTimestamp
                 ) {
-                    if (sortedOverLimitOrders[i].status == LimitOrderStatus.Undeclared) {
+                    if (
+                        sortedOverLimitOrders[i].status ==
+                        LimitOrderStatus.Undeclared
+                    ) {
                         // refund participate amount to user
-                        overLimitOrders[epoch][j].status = LimitOrderStatus.Cancelled;
+                        overLimitOrders[epoch][j].status = LimitOrderStatus
+                            .Cancelled;
                         token.safeTransfer(
                             sortedOverLimitOrders[i].user,
                             sortedOverLimitOrders[i].amount
                         );
                         emit ParticipateLimitOrder(
-                            sortedOverLimitOrders[i].user
-                            , epoch
-                            , sortedOverLimitOrders[i].amount
-                            , sortedOverLimitOrders[i].payout
-                            , sortedOverLimitOrders[i].blockTimestamp
-                            , Position.Over
-                            , LimitOrderStatus.Cancelled);
+                            sortedOverLimitOrders[i].user,
+                            epoch,
+                            sortedOverLimitOrders[i].amount,
+                            sortedOverLimitOrders[i].payout,
+                            sortedOverLimitOrders[i].blockTimestamp,
+                            Position.Over,
+                            LimitOrderStatus.Cancelled
+                        );
                         break;
-                    } 
-                    if (sortedOverLimitOrders[i].status == LimitOrderStatus.Approve) {
-                        overLimitOrders[epoch][j].status = LimitOrderStatus.Approve;
+                    }
+                    if (
+                        sortedOverLimitOrders[i].status ==
+                        LimitOrderStatus.Approve
+                    ) {
+                        overLimitOrders[epoch][j].status = LimitOrderStatus
+                            .Approve;
                         _participate(
                             epoch,
                             Position.Over,
@@ -958,20 +942,22 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                             sortedOverLimitOrders[i].amount
                         );
                         emit ParticipateLimitOrder(
-                            sortedOverLimitOrders[i].user
-                            , epoch
-                            , sortedOverLimitOrders[i].amount
-                            , sortedOverLimitOrders[i].payout
-                            , sortedOverLimitOrders[i].blockTimestamp
-                            , Position.Over
-                            , LimitOrderStatus.Approve);
+                            sortedOverLimitOrders[i].user,
+                            epoch,
+                            sortedOverLimitOrders[i].amount,
+                            sortedOverLimitOrders[i].payout,
+                            sortedOverLimitOrders[i].blockTimestamp,
+                            Position.Over,
+                            LimitOrderStatus.Approve
+                        );
                         break;
                     }
                 }
             }
         }
         for (uint i = 0; i < sortedUnderLimitOrders.length; i++) {
-            if ( sortedUnderLimitOrders[i].status == LimitOrderStatus.Cancelled) continue;
+            if (sortedUnderLimitOrders[i].status == LimitOrderStatus.Cancelled)
+                continue;
             for (uint j = 0; j < underLimitOrders[epoch].length; j++) {
                 if (
                     sortedUnderLimitOrders[i].user ==
@@ -979,26 +965,34 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                     sortedUnderLimitOrders[i].blockTimestamp ==
                     underLimitOrders[epoch][j].blockTimestamp
                 ) {
-
-                    if (sortedUnderLimitOrders[i].status == LimitOrderStatus.Undeclared) {
+                    if (
+                        sortedUnderLimitOrders[i].status ==
+                        LimitOrderStatus.Undeclared
+                    ) {
                         // refund participate amount to user
-                        underLimitOrders[epoch][j].status = LimitOrderStatus.Cancelled;
+                        underLimitOrders[epoch][j].status = LimitOrderStatus
+                            .Cancelled;
                         token.safeTransfer(
                             sortedUnderLimitOrders[i].user,
                             sortedUnderLimitOrders[i].amount
                         );
                         emit ParticipateLimitOrder(
-                            sortedUnderLimitOrders[i].user
-                            , epoch
-                            , sortedUnderLimitOrders[i].amount
-                            , sortedUnderLimitOrders[i].payout
-                            , sortedUnderLimitOrders[i].blockTimestamp
-                            , Position.Under
-                            , LimitOrderStatus.Cancelled);
+                            sortedUnderLimitOrders[i].user,
+                            epoch,
+                            sortedUnderLimitOrders[i].amount,
+                            sortedUnderLimitOrders[i].payout,
+                            sortedUnderLimitOrders[i].blockTimestamp,
+                            Position.Under,
+                            LimitOrderStatus.Cancelled
+                        );
                         break;
-                    } 
-                    if (sortedUnderLimitOrders[i].status == LimitOrderStatus.Approve) {
-                        underLimitOrders[epoch][j].status = LimitOrderStatus.Approve;
+                    }
+                    if (
+                        sortedUnderLimitOrders[i].status ==
+                        LimitOrderStatus.Approve
+                    ) {
+                        underLimitOrders[epoch][j].status = LimitOrderStatus
+                            .Approve;
                         _participate(
                             epoch,
                             Position.Under,
@@ -1006,19 +1000,21 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                             sortedUnderLimitOrders[i].amount
                         );
                         emit ParticipateLimitOrder(
-                            sortedUnderLimitOrders[i].user
-                            , epoch
-                            , sortedUnderLimitOrders[i].amount
-                            , sortedUnderLimitOrders[i].payout
-                            , sortedUnderLimitOrders[i].blockTimestamp
-                            , Position.Under
-                            , LimitOrderStatus.Approve);
+                            sortedUnderLimitOrders[i].user,
+                            epoch,
+                            sortedUnderLimitOrders[i].amount,
+                            sortedUnderLimitOrders[i].payout,
+                            sortedUnderLimitOrders[i].blockTimestamp,
+                            Position.Under,
+                            LimitOrderStatus.Approve
+                        );
                         break;
                     }
                 }
             }
         }
     }
+
     function _sortByPayout(
         LimitOrder[] memory items
     ) internal pure returns (LimitOrder[] memory) {
