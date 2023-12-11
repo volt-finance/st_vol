@@ -3,7 +3,7 @@ import { assert } from "chai";
 import { BN, constants, expectEvent, expectRevert, time, ether, balance } from "@openzeppelin/test-helpers";
 
 const StVol = artifacts.require("StVolUpDown");
-const Oracle = artifacts.require("MockAggregatorV3");
+const Pyth = artifacts.require("MockPyth");
 const MockERC20 = artifacts.require("./utils/MockERC20.sol");
 
 const GAS_PRICE = 8000000000; // hardhat default
@@ -21,6 +21,9 @@ const INITIAL_COMMISSION_RATE = 0.02; // 2%
 const INITIAL_OPERATE_RATE = 0.3; // 30%
 const INITIAL_PARTICIPATE_RATE = 0.7; // 70%
 const MULTIPLIER = 10000;
+const FIRST_PRICE = 100000;
+const SECOND_PRICE = 120000;
+const THIRD_PRICE = 150000;
 
 // Enum: 0 = Over, 1 = Under
 const Position = {
@@ -38,15 +41,17 @@ const assertBNArray = (arr1: any[], arr2: any | any[]) => {
 };
 
 contract(
-  "StVol",
+  "StVolUpDown",
   ([operator, admin, owner, overUser1, overUser2, overUser3, underUser1, underUser2, underUser3, participantVault, overLimitUser1, overLimitUser2, overLimitUser3, underLimitUser1, underLimitUser2, underLimitUser3]) => {
     // mock usdc total supply
     const _totalInitSupply = ether("10000000000");
     let currentEpoch: any;
-    let oracle: { address: any; updateAnswer: (arg0: number) => any };
+    let pyth: any;
     let stVol: any;
     let mockUsdc: any;
-    let priceId = "0xca80ba6dc32e08d06f1aa886011eed1d77c77be9eb761cc10d72b7d0a2fd57a6";
+    const priceId = '0x000000000000000000000000000000000000000000000000000000000000abcd';
+    const validTimePeriod = 60;
+    const singleUpdateFeeInWei = 1;
 
     async function nextEpoch(currentTimestamp: number) {
       await time.increaseTo(currentTimestamp + INTERVAL_SECONDS); // Elapse 20 seconds
@@ -71,16 +76,15 @@ contract(
       mockUsdc.mintTokens(MintAmount, { from: underUser2 });
       mockUsdc.mintTokens(MintAmount, { from: underUser3 });
 
-      oracle = await Oracle.new(DECIMALS, INITIAL_PRICE);
+      pyth = await Pyth.new(validTimePeriod, singleUpdateFeeInWei);
 
       stVol = await StVol.new(
         mockUsdc.address,
-        oracle.address,
+        pyth.address,
         admin,
         operator,
         participantVault,
         String(INITIAL_COMMISSION_RATE * 10000),
-        String(INITIAL_OPERATE_RATE * 10000),
         priceId,
         { from: owner }
       );
@@ -118,7 +122,90 @@ contract(
       assert.equal((await time.latest()).toNumber(), currentTimestamp);
       assert.equal(await stVol.currentEpoch(), 0);
 
-      currentTimestamp = 1698300300;
+      // Epoch 1: Start genesis round 1
+      let tx = await stVol.genesisOpenRound(currentTimestamp);
+      expectEvent(tx, "OpenRound", { epoch: new BN(1) });
+      assert.equal(await stVol.currentEpoch(), 1);
+
+      // Start round 1
+      assert.equal(await stVol.genesisOpenOnce(), true);
+      assert.equal(await stVol.genesisStartOnce(), false);
+      assert.equal((await stVol.rounds(1)).openTimestamp, currentTimestamp);
+      assert.equal((await stVol.rounds(1)).startTimestamp, currentTimestamp + INTERVAL_SECONDS);
+      assert.equal((await stVol.rounds(1)).closeTimestamp, currentTimestamp + INTERVAL_SECONDS * 2);
+      assert.equal((await stVol.rounds(1)).epoch, 1);
+      assert.equal((await stVol.rounds(1)).totalAmount, 0);
+
+      // Elapse 20 blocks
+      currentTimestamp += INTERVAL_SECONDS;
+      await time.increaseTo(currentTimestamp);
+      // update pythPrice updateData
+      let updateData = await pyth.createPriceFeedUpdateData(priceId, FIRST_PRICE, 10 * FIRST_PRICE, -5, FIRST_PRICE, 10 * FIRST_PRICE, currentTimestamp);
+      let requiredFee = await pyth.getUpdateFee([updateData]);
+
+      await pyth.updatePriceFeeds([updateData], { value: requiredFee });
+
+      // Epoch 2: Lock genesis round 1 and starts round 2
+      tx = await stVol.genesisStartRound([updateData], currentTimestamp, false, { value: requiredFee });
+
+      expectEvent(tx, "StartRound", {
+        epoch: new BN(1),
+        price: new BN(FIRST_PRICE),
+      });
+
+      expectEvent(tx, "OpenRound", { epoch: new BN(2) });
+      assert.equal(await stVol.currentEpoch(), 2);
+
+      // Lock round 1
+      assert.equal(await stVol.genesisOpenOnce(), true);
+      assert.equal(await stVol.genesisStartOnce(), true);
+      assert.equal((await stVol.rounds(1)).startPrice, FIRST_PRICE);
+
+      // Start round 2
+      assert.equal((await stVol.rounds(2)).openTimestamp, currentTimestamp);
+      assert.equal((await stVol.rounds(2)).startTimestamp, currentTimestamp + INTERVAL_SECONDS);
+      assert.equal((await stVol.rounds(2)).closeTimestamp, currentTimestamp + 2 * INTERVAL_SECONDS);
+      assert.equal((await stVol.rounds(2)).epoch, 2);
+      assert.equal((await stVol.rounds(2)).totalAmount, 0);
+
+      // Elapse 20 blocks
+      currentTimestamp += INTERVAL_SECONDS;
+      await time.increaseTo(currentTimestamp);
+      // update pythPrice updateData
+      updateData = await pyth.createPriceFeedUpdateData(priceId, SECOND_PRICE, 10 * SECOND_PRICE, -5, SECOND_PRICE, 10 * SECOND_PRICE, currentTimestamp);
+      requiredFee = await pyth.getUpdateFee([updateData]);
+
+      await pyth.updatePriceFeeds([updateData], { value: requiredFee });
+
+      // Epoch 3: End genesis round 1, locks round 2, starts round 3
+      tx = await stVol.executeRound([updateData], currentTimestamp, false, { value: requiredFee });
+
+      expectEvent(tx, "EndRound", {
+        epoch: new BN(1),
+        price: new BN(SECOND_PRICE),
+      });
+
+      expectEvent(tx, "StartRound", {
+        epoch: new BN(2),
+        price: new BN(SECOND_PRICE),
+      });
+
+      expectEvent(tx, "OpenRound", { epoch: new BN(3) });
+      assert.equal(await stVol.currentEpoch(), 3);
+
+      // End round 1
+      assert.equal((await stVol.rounds(1)).closePrice, SECOND_PRICE);
+
+      // Lock round 2
+      assert.equal((await stVol.rounds(2)).startPrice, SECOND_PRICE);
+    });
+    it.only("Should start genesis rounds with parsePriceFeedUpdates in pyth (round 1, round 2, round 3)", async () => {
+      // Manual block calculation
+      let currentTimestamp = (await time.latest()).toNumber();
+
+      // Epoch 0
+      assert.equal((await time.latest()).toNumber(), currentTimestamp);
+      assert.equal(await stVol.currentEpoch(), 0);
 
       // Epoch 1: Start genesis round 1
       let tx = await stVol.genesisOpenRound(currentTimestamp);
@@ -137,13 +224,18 @@ contract(
       // Elapse 20 blocks
       currentTimestamp += INTERVAL_SECONDS;
       await time.increaseTo(currentTimestamp);
+      // update pythPrice updateData
+      let updateData = await pyth.createPriceFeedUpdateData(priceId, FIRST_PRICE, 10 * FIRST_PRICE, -5, FIRST_PRICE, 10 * FIRST_PRICE, currentTimestamp);
+      let requiredFee = await pyth.getUpdateFee([updateData]);
+
+      await pyth.updatePriceFeeds([updateData], { value: requiredFee });
 
       // Epoch 2: Lock genesis round 1 and starts round 2
-      tx = await stVol.genesisStartRound(new BN(INITIAL_PRICE), currentTimestamp);
+      tx = await stVol.genesisStartRound([updateData], currentTimestamp, true, { value: requiredFee });
 
       expectEvent(tx, "StartRound", {
         epoch: new BN(1),
-        price: new BN(INITIAL_PRICE),
+        price: new BN(FIRST_PRICE),
       });
 
       expectEvent(tx, "OpenRound", { epoch: new BN(2) });
@@ -152,7 +244,7 @@ contract(
       // Lock round 1
       assert.equal(await stVol.genesisOpenOnce(), true);
       assert.equal(await stVol.genesisStartOnce(), true);
-      assert.equal((await stVol.rounds(1)).startPrice, INITIAL_PRICE);
+      assert.equal((await stVol.rounds(1)).startPrice, FIRST_PRICE);
 
       // Start round 2
       assert.equal((await stVol.rounds(2)).openTimestamp, currentTimestamp);
@@ -164,29 +256,35 @@ contract(
       // Elapse 20 blocks
       currentTimestamp += INTERVAL_SECONDS;
       await time.increaseTo(currentTimestamp);
+      // update pythPrice updateData
+      updateData = await pyth.createPriceFeedUpdateData(priceId, SECOND_PRICE, 10 * SECOND_PRICE, -5, SECOND_PRICE, 10 * SECOND_PRICE, currentTimestamp);
+      requiredFee = await pyth.getUpdateFee([updateData]);
+
+      await pyth.updatePriceFeeds([updateData], { value: requiredFee });
 
       // Epoch 3: End genesis round 1, locks round 2, starts round 3
-      tx = await stVol.executeRound(new BN(INITIAL_PRICE), currentTimestamp);
+      tx = await stVol.executeRound([updateData], currentTimestamp, true, { value: 100000 });
 
       expectEvent(tx, "EndRound", {
         epoch: new BN(1),
-        price: new BN(INITIAL_PRICE),
+        price: new BN(SECOND_PRICE),
       });
 
       expectEvent(tx, "StartRound", {
         epoch: new BN(2),
-        price: new BN(INITIAL_PRICE),
+        price: new BN(SECOND_PRICE),
       });
 
       expectEvent(tx, "OpenRound", { epoch: new BN(3) });
       assert.equal(await stVol.currentEpoch(), 3);
 
       // End round 1
-      assert.equal((await stVol.rounds(1)).closePrice, INITIAL_PRICE);
+      assert.equal((await stVol.rounds(1)).closePrice, SECOND_PRICE);
 
       // Lock round 2
-      assert.equal((await stVol.rounds(2)).startPrice, INITIAL_PRICE);
+      assert.equal((await stVol.rounds(2)).startPrice, SECOND_PRICE);
     });
+
     it("Should record data and user participate", async () => {
       let currentTimestamp = 1704078000;
       await time.increaseTo(currentTimestamp);
@@ -515,7 +613,7 @@ contract(
       assert.equal((await stVol.rounds(2)).overAmount, ether("2").toString());
       assert.equal((await stVol.rounds(2)).underAmount, ether("2").toString());
     });
-    it.only("[6]", async () => {
+    it("[6]", async () => {
       let currentTimestamp = 1704078000;
       await time.increaseTo(currentTimestamp);
 
