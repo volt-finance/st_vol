@@ -9,6 +9,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
+import "./utils/AutoIncrementing.sol";
 
 /**
  * E01: Not admin
@@ -47,8 +48,11 @@ import "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
  * E34: Strategy Rate must not be greater than 10000 (100%)
  * E35: Exceed limit order size
  */
+import "hardhat/console.sol";
+
 contract StVol is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using AutoIncrementing for AutoIncrementing.Counter;
 
     IERC20 public immutable token; // Prediction token
 
@@ -75,10 +79,11 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     uint256 public constant MAX_COMMISSION_FEE = 200; // 2%
     uint256 public constant DEFAULT_MIN_PARTICIPATE_AMOUNT = 1000000; // 1 USDC
     uint256 public constant DEFAULT_INTERVAL_SECONDS = 86400; // 24 * 60 * 60 * 1(1day)
-    uint256 public constant DEFAULT_BUFFER_SECONDS = 600; // 60 * 10 (10min)
+    uint256 public constant DEFAULT_BUFFER_SECONDS = 300; // 60 * 5 (5min)
     uint256 public constant MAX_LIMIT_ORDERS = 50; // maximum limit order size
 
     struct LimitOrder {
+        uint256 idx;
         address user;
         uint256 payout;
         uint256 amount;
@@ -96,6 +101,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         public ledger;
     mapping(uint256 => Round) public rounds;
     mapping(address => uint256[]) public userRounds;
+    mapping(uint256 => AutoIncrementing.Counter) private counters;
+
     enum Position {
         Over,
         Under
@@ -143,6 +150,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         uint256 amount
     );
     event ParticipateLimitOrder(
+        uint256 indexed idx,
         address indexed sender,
         uint256 indexed epoch,
         uint256 amount,
@@ -700,8 +708,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         token.safeTransferFrom(msg.sender, address(this), _amount);
 
         LimitOrder[] storage limitOrders = overLimitOrders[epoch];
+        uint256 idx = counters[epoch].nextId();
         limitOrders.push(
             LimitOrder(
+                idx,
                 msg.sender,
                 _payout,
                 _amount,
@@ -710,6 +720,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             )
         );
         emit ParticipateLimitOrder(
+            idx,
             msg.sender,
             epoch,
             _amount,
@@ -737,8 +748,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         token.safeTransferFrom(msg.sender, address(this), _amount);
 
         LimitOrder[] storage limitOrders = underLimitOrders[epoch];
+        uint256 idx = counters[epoch].nextId();
         limitOrders.push(
             LimitOrder(
+                idx,
                 msg.sender,
                 _payout,
                 _amount,
@@ -747,6 +760,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             )
         );
         emit ParticipateLimitOrder(
+            idx,
             msg.sender,
             epoch,
             _amount,
@@ -758,10 +772,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     function cancelLimitOrder(
+        uint256 idx,
         uint256 epoch,
-        Position position,
-        uint256 blockTimestamp,
-        uint256 amount
+        Position position
     ) external nonReentrant notContract {
         require(rounds[epoch].openTimestamp != 0, "E21");
         require(block.timestamp < rounds[epoch].startTimestamp, "E22");
@@ -770,9 +783,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             for (uint256 i = 0; i < overLimitOrders[epoch].length; i++) {
                 if (
                     overLimitOrders[epoch][i].user == msg.sender &&
-                    overLimitOrders[epoch][i].blockTimestamp ==
-                    blockTimestamp &&
-                    overLimitOrders[epoch][i].amount == amount
+                    overLimitOrders[epoch][i].idx == idx &&
+                    overLimitOrders[epoch][i].status ==
+                    LimitOrderStatus.Undeclared
                 ) {
                     overLimitOrders[epoch][i].status = LimitOrderStatus
                         .Cancelled;
@@ -783,6 +796,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                         );
                     }
                     emit ParticipateLimitOrder(
+                        overLimitOrders[epoch][i].idx,
                         msg.sender,
                         epoch,
                         overLimitOrders[epoch][i].amount,
@@ -798,9 +812,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             for (uint256 i = 0; i < underLimitOrders[epoch].length; i++) {
                 if (
                     underLimitOrders[epoch][i].user == msg.sender &&
-                    underLimitOrders[epoch][i].blockTimestamp ==
-                    blockTimestamp &&
-                    underLimitOrders[epoch][i].amount == amount
+                    underLimitOrders[epoch][i].idx == idx &&
+                    underLimitOrders[epoch][i].status ==
+                    LimitOrderStatus.Undeclared
                 ) {
                     underLimitOrders[epoch][i].status = LimitOrderStatus
                         .Cancelled;
@@ -811,6 +825,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                         );
                     }
                     emit ParticipateLimitOrder(
+                        underLimitOrders[epoch][i].idx,
                         msg.sender,
                         epoch,
                         underLimitOrders[epoch][i].amount,
@@ -902,10 +917,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 continue;
             for (uint j = 0; j < overLimitOrders[epoch].length; j++) {
                 if (
-                    sortedOverLimitOrders[i].user ==
-                    overLimitOrders[epoch][j].user &&
-                    sortedOverLimitOrders[i].blockTimestamp ==
-                    overLimitOrders[epoch][j].blockTimestamp
+                    sortedOverLimitOrders[i].idx ==
+                    overLimitOrders[epoch][j].idx
                 ) {
                     if (
                         sortedOverLimitOrders[i].status ==
@@ -919,6 +932,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                             sortedOverLimitOrders[i].amount
                         );
                         emit ParticipateLimitOrder(
+                            sortedOverLimitOrders[i].idx,
                             sortedOverLimitOrders[i].user,
                             epoch,
                             sortedOverLimitOrders[i].amount,
@@ -942,6 +956,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                             sortedOverLimitOrders[i].amount
                         );
                         emit ParticipateLimitOrder(
+                            sortedOverLimitOrders[i].idx,
                             sortedOverLimitOrders[i].user,
                             epoch,
                             sortedOverLimitOrders[i].amount,
@@ -960,10 +975,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                 continue;
             for (uint j = 0; j < underLimitOrders[epoch].length; j++) {
                 if (
-                    sortedUnderLimitOrders[i].user ==
-                    underLimitOrders[epoch][j].user &&
-                    sortedUnderLimitOrders[i].blockTimestamp ==
-                    underLimitOrders[epoch][j].blockTimestamp
+                    sortedUnderLimitOrders[i].idx ==
+                    underLimitOrders[epoch][j].idx
                 ) {
                     if (
                         sortedUnderLimitOrders[i].status ==
@@ -977,6 +990,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                             sortedUnderLimitOrders[i].amount
                         );
                         emit ParticipateLimitOrder(
+                            sortedUnderLimitOrders[i].idx,
                             sortedUnderLimitOrders[i].user,
                             epoch,
                             sortedUnderLimitOrders[i].amount,
@@ -1000,6 +1014,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                             sortedUnderLimitOrders[i].amount
                         );
                         emit ParticipateLimitOrder(
+                            sortedUnderLimitOrders[i].idx,
                             sortedUnderLimitOrders[i].user,
                             epoch,
                             sortedUnderLimitOrders[i].amount,
