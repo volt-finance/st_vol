@@ -38,7 +38,7 @@ const main = async () => {
     console.log("===========================================");
 
     // Deploy contracts.
-    const StVol = await ethers.getContractFactory("StVolUpDown");
+    const StVol = await ethers.getContractFactory("StVol0Per");
     const stVolContract = await StVol.deploy(
       config.Address.Usdc[networkName],
       config.Address.Oracle[networkName],
@@ -55,7 +55,7 @@ const main = async () => {
     await run("verify:verify", {
       address: stVolContract.address,
       network: ethers.provider.network,
-      contract: "contracts/StVolUpDown.sol:StVolUpDown",
+      contract: "contracts/StVol0Per.sol:StVol0Per",
       constructorArguments: [
         config.Address.Usdc[networkName],
         config.Address.Oracle[networkName],

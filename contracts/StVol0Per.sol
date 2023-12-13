@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 import "./StVol.sol";
 
 /**
- * @title StVolUpDown
+ * @title StVol0Per
  */
-contract StVolUpDown is StVol {
+contract StVol0Per is StVol {
     constructor(
         address _token,
         address _oracleAddress,
