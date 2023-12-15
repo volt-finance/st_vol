@@ -2,7 +2,7 @@ export default {
   Address: {
     Usdc: {
       mainnet: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      arbitrum: "",
+      arbitrum: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
       arbitrum_goerli: "0x8FB1E3fC51F3b789dED7557E680551d93Ea9d892",
       goerli: "0x456f6b7b1c5126060fe358fb4a5f935b3fbc26ef",
     },
@@ -21,19 +21,19 @@ export default {
     // },
     Admin: {
       mainnet: "0x93072915E6fD257Ca98eD80343D6fbc8e2426C9F",
-      arbitrum: "",
+      arbitrum: "0x93072915E6fD257Ca98eD80343D6fbc8e2426C9F",
       arbitrum_goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
       goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
     },
     Operator: {
       mainnet: "0x5e6c12e083B1Ad5fB7c7bf5582467EB74cD58a66",
-      arbitrum: "",
+      arbitrum: "0x5e6c12e083B1Ad5fB7c7bf5582467EB74cD58a66",
       arbitrum_goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
       goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
     },
     OperatorVault: {
       mainnet: "0xFb6B24942a19F138EF468EC39Ce8653A87500832",
-      arbitrum: "",
+      arbitrum: "0xFb6B24942a19F138EF468EC39Ce8653A87500832",
       arbitrum_goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
       goerli: "0xC61042a7e9a6fe7E738550f24030D37Ecb296DC0",
     }

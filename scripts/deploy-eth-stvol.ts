@@ -4,6 +4,7 @@ import config from "../config";
 const main = async () => {
   // Get network data from Hardhat config (see hardhat.config.ts).
   const networkName = network.name;
+  const STVOL_NAME = "StVol3PerUp";
 
   // Check if the network is supported.
   if (networkName === "goerli"
@@ -21,7 +22,7 @@ const main = async () => {
       config.Address.Operator[networkName] === ethers.constants.AddressZero ||
       config.Address.OperatorVault[networkName] === ethers.constants.AddressZero
     ) {
-      throw new Error("Missing addresses (Chainlink Oracle and/or Admin/Operator)");
+      throw new Error("Missing addresses (Pyth Oracle and/or Admin/Operator)");
     }
 
     // Compile contracts.
@@ -38,7 +39,7 @@ const main = async () => {
     console.log("===========================================");
 
     // Deploy contracts.
-    const StVol = await ethers.getContractFactory("StVol0Per");
+    const StVol = await ethers.getContractFactory(STVOL_NAME);
     const stVolContract = await StVol.deploy(
       config.Address.Usdc[networkName],
       config.Address.Oracle[networkName],
@@ -50,12 +51,12 @@ const main = async () => {
     );
 
     await stVolContract.deployed();
-    console.log(`🍣 StVolContract deployed at ${stVolContract.address}`);
+    console.log(`🍣 ${STVOL_NAME} Contract deployed at ${stVolContract.address}`);
 
     await run("verify:verify", {
       address: stVolContract.address,
       network: ethers.provider.network,
-      contract: "contracts/StVol0Per.sol:StVol0Per",
+      contract: `contracts/${STVOL_NAME}.sol:${STVOL_NAME}`,
       constructorArguments: [
         config.Address.Usdc[networkName],
         config.Address.Oracle[networkName],
