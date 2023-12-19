@@ -48,8 +48,6 @@ import "./utils/AutoIncrementing.sol";
  * E34: Strategy Rate must not be greater than 10000 (100%)
  * E35: Exceed limit order size
  */
-import "hardhat/console.sol";
-
 contract StVol is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using AutoIncrementing for AutoIncrementing.Counter;
@@ -78,7 +76,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     uint256 public constant BASE = 10000; // 100%
     uint256 public constant MAX_COMMISSION_FEE = 200; // 2%
     uint256 public constant DEFAULT_MIN_PARTICIPATE_AMOUNT = 1000000; // 1 USDC
-    uint256 public constant DEFAULT_INTERVAL_SECONDS = 86400; // 24 * 60 * 60 * 1(1day)
+    // uint256 public constant DEFAULT_INTERVAL_SECONDS = 86400; // 24 * 60 * 60 * 1(1day)
+    uint256 public constant DEFAULT_INTERVAL_SECONDS = 600; // 24 * 60 * 60 * 1(1day)
     uint256 public constant DEFAULT_BUFFER_SECONDS = 300; // 60 * 5 (5min)
     uint256 public constant MAX_LIMIT_ORDERS = 50; // maximum limit order size
 
@@ -247,10 +246,7 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         _participate(epoch, Position.Over, msg.sender, _amount);
     }
 
-    function claim(
-        uint256 epoch,
-        Position position
-    ) external nonReentrant {
+    function claim(uint256 epoch, Position position) external nonReentrant {
         uint256 reward; // Initializes reward
 
         require(rounds[epoch].openTimestamp != 0, "E10");
@@ -333,7 +329,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
         uint fee = oracle.getUpdateFee(priceUpdateData);
         if (isFixed) {
-            PythStructs.PriceFeed memory pythPrice = oracle.parsePriceFeedUpdates{value: fee}(
+            PythStructs.PriceFeed memory pythPrice = oracle
+                .parsePriceFeedUpdates{value: fee}(
                 priceUpdateData,
                 pythPair,
                 fixedTimestamp,
@@ -465,7 +462,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
 
                 // Round vaild, claim rewards
                 if (claimable(epoch, position, _user)) {
-                    console.log("claimable!");
                     if (
                         (round.overAmount > 0 && round.underAmount > 0) &&
                         (round.startPrice != round.closePrice)
@@ -477,11 +473,14 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
                     }
                     addedReward += ledger[epoch][position][_user].amount;
                 } else {
-                    console.log("refundable!");
                     // Round invaild, refund bet amount
                     if (refundable(epoch, position, _user)) {
                         addedReward += ledger[epoch][position][_user].amount;
-                        addedReward += _getUndeclaredAmt(epoch, position, _user);
+                        addedReward += _getUndeclaredAmt(
+                            epoch,
+                            position,
+                            _user
+                        );
                     }
                 }
 
@@ -540,13 +539,19 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
             refundAmt != 0;
     }
 
-    function _getUndeclaredAmt(uint256 epoch, Position position, address user) internal view returns (uint256) {
+    function _getUndeclaredAmt(
+        uint256 epoch,
+        Position position,
+        address user
+    ) internal view returns (uint256) {
         uint256 amt = 0;
 
         if (position == Position.Over) {
             for (uint256 i = 0; i < overLimitOrders[epoch].length; i++) {
                 if (
-                    overLimitOrders[epoch][i].user == user && overLimitOrders[epoch][i].status == LimitOrderStatus.Undeclared
+                    overLimitOrders[epoch][i].user == user &&
+                    overLimitOrders[epoch][i].status ==
+                    LimitOrderStatus.Undeclared
                 ) {
                     amt += overLimitOrders[epoch][i].amount;
                 }
@@ -554,7 +559,9 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         } else {
             for (uint256 i = 0; i < underLimitOrders[epoch].length; i++) {
                 if (
-                    underLimitOrders[epoch][i].user == user && underLimitOrders[epoch][i].status == LimitOrderStatus.Undeclared
+                    underLimitOrders[epoch][i].user == user &&
+                    underLimitOrders[epoch][i].status ==
+                    LimitOrderStatus.Undeclared
                 ) {
                     amt += underLimitOrders[epoch][i].amount;
                 }

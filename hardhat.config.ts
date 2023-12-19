@@ -70,6 +70,15 @@ export default {
       },
       chainId: 421613,
     },
+    arbitrum_sepolia: {
+      url: `https://arbitrum-sepolia.infura.io/v3/${infuraKey}`,
+      gas: 22000000,
+      allowUnlimitedContractSize: true,
+      accounts: {
+        mnemonic,
+      },
+      chainId: 421614,
+    },
     goerli: {
       url: `https://goerli.infura.io/v3/${infuraKey}`,
       gas: 22000000,
@@ -104,6 +113,7 @@ export default {
       arbitrumOne: process.env.ARBITRUM_ETHERSCAN_KEY,
       arbitrumGoerli: process.env.ARBITRUM_ETHERSCAN_KEY,
       sepolia: process.env.ETHERSCAN_KEY,
+      arbitrumSepolia: process.env.ARBITRUM_ETHERSCAN_KEY,
     }
   },
   abiExporter: {
