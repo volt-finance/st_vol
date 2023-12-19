@@ -12,6 +12,7 @@
     "deploy-eth:goerli": "npx hardhat run --network goerli scripts/deploy-eth-stvol.ts",
     "deploy-btc:goerli": "npx hardhat run --network goerli scripts/deploy-btc-stvol.ts",
     "deploy:arbitrum-goerli": "npx hardhat run --network arbitrum_goerli scripts/deploy-eth-stvol.ts",
+    "deploy:sepolia": "npx hardhat run --network sepolia scripts/deploy-eth-stvol.ts",
     "deploy:arbitrum": "npx hardhat run --network arbitrum scripts/deploy-eth-stvol.ts",
     "test": "npx hardhat test",
     "test:iter": "hardhat test --network hardhat ./test/IteratableOrderSet.spec.ts",
@@ -20,6 +21,7 @@
     "test:coverage": "npx hardhat coverage",
     "test:size-contracts": "npx hardhat size-contracts",
     "verify:goerli": "npx hardhat verify --constructor-args dev.arguments.js --contract \"contracts/StVolUpDown.sol:StVolUpDown\" --network goerli 0x70396E8b0cEE022B301b832bE796e35A28250FCC",
+    "verify:sepolia": "npx hardhat verify --constructor-args dev.arguments.js --contract \"contracts/StVol0Per.sol:StVol0Per\" --network sepolia 0x56b7F20033cD3909938B9953480706354a171582",
     "verify:mainnet": "npx hardhat verify --constructor-args prod.arguments.js --contract \"contracts/StVol1PerDown.sol:StVol1PerDown\" --network mainnet 0xF94e7F50120fe8276B85E21f31C6de097eab8813",
     "verify:arbitrum-goerli": "npx hardhat verify --constructor-args arbi.dev.arguments.js --contract \"contracts/StVolUpDown.sol:StVolUpDown\" --network arbitrum_goerli 0xA9A277401dA8C814052a18A0ccb5A2fC14BCb6DD",
     "verify:arbitrum": "npx hardhat verify --constructor-args arbi.prod.arguments.js --contract \"contracts/StVolUpDown.sol:StVolUpDown\" --network arbitrum 0x40b0c000893164D6963597F572699107fB27CE04",
@@ -43,6 +45,7 @@
     "typescript": "^5.1.6"
   },
   "dependencies": {
+    "@nomicfoundation/hardhat-verify": "^2.0.2",
     "@nomiclabs/hardhat-etherscan": "^3.1.7",
     "@nomiclabs/hardhat-waffle": "^2.0.6",
     "@nomiclabs/hardhat-web3": "^2.0.0",

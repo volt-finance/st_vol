@@ -1,7 +1,8 @@
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-waffle";
-import "@nomiclabs/hardhat-etherscan";
+// import "@nomiclabs/hardhat-etherscan";
+import "@nomicfoundation/hardhat-verify";
 import '@typechain/hardhat';
 import "solidity-coverage";
 import "hardhat-abi-exporter";
@@ -52,6 +53,14 @@ export default {
       },
       chainId: 42161,
     },
+    sepolia: {
+      url: `https://sepolia.infura.io/v3/${infuraKey}`,
+      allowUnlimitedContractSize: true,
+      accounts: {
+        mnemonic,
+      },
+      chainId: 11155111,
+    },
     arbitrum_goerli: {
       url: `https://arbitrum-goerli.infura.io/v3/${infuraKey}`,
       gas: 22000000,
@@ -94,6 +103,7 @@ export default {
       goerli: process.env.ETHERSCAN_KEY,
       arbitrumOne: process.env.ARBITRUM_ETHERSCAN_KEY,
       arbitrumGoerli: process.env.ARBITRUM_ETHERSCAN_KEY,
+      sepolia: process.env.ETHERSCAN_KEY,
     }
   },
   abiExporter: {

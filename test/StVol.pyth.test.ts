@@ -2,9 +2,9 @@ import { ethers, artifacts, contract } from "hardhat";
 import { assert } from "chai";
 import { BN, constants, expectEvent, expectRevert, time, ether, balance } from "@openzeppelin/test-helpers";
 
-const StVol = artifacts.require("StVolUpDown");
-const Pyth = artifacts.require("MockPyth");
-const MockERC20 = artifacts.require("./utils/MockERC20.sol");
+const StVol = artifacts.require("StVol0Per");
+const Pyth = artifacts.require("/contracts/mocks/pyth/MockPyth.sol:MockPyth");
+const MockERC20 = artifacts.require("/contracts/utils/MockERC20.sol");
 
 const GAS_PRICE = 8000000000; // hardhat default
 // BLOCK_COUNT_MULTPLIER: Only for test, because testing trx causes block to increment which exceeds blockBuffer time checks
@@ -13,7 +13,7 @@ const BLOCK_COUNT_MULTPLIER = 5;
 const DECIMALS = 8; // Chainlink default for ETH/USD
 const INITIAL_PRICE = 10000000000; // $100, 8 decimal places
 const INTERVAL_SECONDS = 86400;
-const BUFFER_SECONDS = 600;
+const BUFFER_SECONDS = 300; // 5min
 const MIN_AMOUNT = 1000000 // 1 USDC
 const UPDATE_ALLOWANCE = 30 * BLOCK_COUNT_MULTPLIER; // 30s * multiplier
 const INITIAL_REWARD_RATE = 0.9; // 90%
@@ -395,6 +395,151 @@ contract(
       assert.equal(await stVol.getUserRoundsLength(overUser1), 4);
     });
 
+
+    it("Should refund all user's participant amount when round is fail", async () => {
+      let currentTimestamp = (await time.latest()).toNumber();
+
+      // Epoch 1
+      await stVol.genesisOpenRound(currentTimestamp);
+      currentEpoch = await stVol.currentEpoch();
+      await stVol.participateUnder(currentEpoch, ether("10"), { from: underUser1 });
+
+      // place limit order
+      let limitOrderTx = await stVol.participateLimitOver(currentEpoch, ether("1"), new BN(2 * MULTIPLIER), { from: overLimitUser1 }); // payout:2x
+
+      let expectedTimestamp = (await time.latest()).toNumber();
+      expectEvent(limitOrderTx, "ParticipateLimitOrder", {
+        idx: new BN(1),
+        sender: overLimitUser1,
+        payout: new BN(2 * MULTIPLIER),
+        amount: ether("1"),
+        placeTimestamp: new BN(expectedTimestamp),
+        position: new BN(0),
+        status: new BN(0)
+      });
+
+      limitOrderTx = await stVol.participateLimitOver(currentEpoch, ether("1"), new BN(2 * MULTIPLIER), { from: overLimitUser1 }); // payout:2x
+      expectedTimestamp = (await time.latest()).toNumber();
+      expectEvent(limitOrderTx, "ParticipateLimitOrder", {
+        idx: new BN(2),
+        sender: overLimitUser1,
+        payout: new BN(2 * MULTIPLIER),
+        amount: ether("1"),
+        placeTimestamp: new BN(expectedTimestamp),
+        position: new BN(0),
+        status: new BN(0)
+      });
+
+      limitOrderTx = await stVol.participateLimitOver(currentEpoch, ether("1"), new BN(2 * MULTIPLIER), { from: overLimitUser1 }); // payout:2x
+      expectedTimestamp = (await time.latest()).toNumber();
+      expectEvent(limitOrderTx, "ParticipateLimitOrder", {
+        idx: new BN(3),
+        sender: overLimitUser1,
+        payout: new BN(2 * MULTIPLIER),
+        amount: ether("1"),
+        placeTimestamp: new BN(expectedTimestamp),
+        position: new BN(0),
+        status: new BN(0)
+      });
+      limitOrderTx = await stVol.participateLimitOver(currentEpoch, ether("1"), new BN(2 * MULTIPLIER), { from: overLimitUser1 }); // payout:2x
+      expectedTimestamp = (await time.latest()).toNumber();
+      expectEvent(limitOrderTx, "ParticipateLimitOrder", {
+        idx: new BN(4),
+        sender: overLimitUser1,
+        payout: new BN(2 * MULTIPLIER),
+        amount: ether("1"),
+        placeTimestamp: new BN(expectedTimestamp),
+        position: new BN(0),
+        status: new BN(0)
+      });
+      limitOrderTx = await stVol.participateLimitOver(currentEpoch, ether("1"), new BN(2 * MULTIPLIER), { from: overLimitUser1 }); // payout:2x
+      expectedTimestamp = (await time.latest()).toNumber();
+      expectEvent(limitOrderTx, "ParticipateLimitOrder", {
+        idx: new BN(5),
+        sender: overLimitUser1,
+        payout: new BN(2 * MULTIPLIER),
+        amount: ether("1"),
+        placeTimestamp: new BN(expectedTimestamp),
+        position: new BN(0),
+        status: new BN(0)
+      });
+
+
+      limitOrderTx = await stVol.participateLimitUnder(currentEpoch, ether("1"), new BN(5 * MULTIPLIER), { from: underLimitUser1 }); // payout:5x
+      expectedTimestamp = (await time.latest()).toNumber();
+      expectEvent(limitOrderTx, "ParticipateLimitOrder", {
+        idx: new BN(6),
+        sender: underLimitUser1,
+        payout: new BN(5 * MULTIPLIER),
+        amount: ether("1"),
+        placeTimestamp: new BN(expectedTimestamp),
+        position: new BN(1),
+        status: new BN(0)
+      });
+
+      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("16").toString());
+
+      // Epoch 2
+      // execute limit order 
+      currentTimestamp += INTERVAL_SECONDS * 2 + BUFFER_SECONDS;
+      await time.increaseTo(currentTimestamp);
+
+      await stVol.claimAll({ from: overLimitUser1 })
+      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("11").toString());
+
+      await stVol.pause({ from: admin });
+      await stVol.redeemAll(underLimitUser1, { from: admin });
+      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("10").toString());
+
+      await stVol.claimAll({ from: underUser1 });
+      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("0").toString());
+    });
+
+    it.only("Should refund all user's participant amount when round is fail", async () => {
+      let currentTimestamp = (await time.latest()).toNumber();
+
+      // Epoch 1
+      await stVol.genesisOpenRound(currentTimestamp);
+      currentEpoch = await stVol.currentEpoch();
+      await stVol.participateUnder(currentEpoch, ether("10"), { from: underUser1 });
+
+      // place limit order
+      let limitOrderTx = await stVol.participateLimitOver(currentEpoch, ether("1"), new BN(2 * MULTIPLIER), { from: underUser1 }); // payout:2x
+
+      let expectedTimestamp = (await time.latest()).toNumber();
+      expectEvent(limitOrderTx, "ParticipateLimitOrder", {
+        idx: new BN(1),
+        sender: underUser1,
+        payout: new BN(2 * MULTIPLIER),
+        amount: ether("1"),
+        placeTimestamp: new BN(expectedTimestamp),
+        position: new BN(0),
+        status: new BN(0)
+      });
+
+      limitOrderTx = await stVol.participateLimitOver(currentEpoch, ether("1"), new BN(2 * MULTIPLIER), { from: underUser1 }); // payout:2x
+      expectedTimestamp = (await time.latest()).toNumber();
+      expectEvent(limitOrderTx, "ParticipateLimitOrder", {
+        idx: new BN(2),
+        sender: underUser1,
+        payout: new BN(2 * MULTIPLIER),
+        amount: ether("1"),
+        placeTimestamp: new BN(expectedTimestamp),
+        position: new BN(0),
+        status: new BN(0)
+      });
+
+      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("12").toString());
+
+      // Epoch 2
+      // execute limit order 
+      currentTimestamp += INTERVAL_SECONDS * 2 + BUFFER_SECONDS;
+      await time.increaseTo(currentTimestamp);
+
+      await stVol.claimAll({ from: underUser1 })
+      assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("0").toString());
+    });
+
     it("[2]", async () => {
       let currentTimestamp = 1704078000;
       await time.increaseTo(currentTimestamp);
@@ -741,7 +886,7 @@ contract(
       expectEvent(tx, "Claim", { sender: overLimitUser1, epoch: new BN("1"), amount: ether("14.8") });
       assert.equal((await mockUsdc.balanceOf(stVol.address)).toString(), ether("0.2").toString());
     });
-    it.only("Should cancel placed limit order", async () => {
+    it("Should cancel placed limit order", async () => {
       let currentTimestamp = (await time.latest()).toNumber();
 
       // Epoch 1
