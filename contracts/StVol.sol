@@ -76,9 +76,8 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     uint256 public constant BASE = 10000; // 100%
     uint256 public constant MAX_COMMISSION_FEE = 200; // 2%
     uint256 public constant DEFAULT_MIN_PARTICIPATE_AMOUNT = 1000000; // 1 USDC
-    // uint256 public constant DEFAULT_INTERVAL_SECONDS = 86400; // 24 * 60 * 60 * 1(1day)
-    uint256 public constant DEFAULT_INTERVAL_SECONDS = 600; // 24 * 60 * 60 * 1(1day)
-    uint256 public constant DEFAULT_BUFFER_SECONDS = 300; // 60 * 5 (5min)
+    uint256 public constant DEFAULT_INTERVAL_SECONDS = 86400; // 24 * 60 * 60 * 1(1day)
+    uint256 public constant DEFAULT_BUFFER_SECONDS = 1800; // 30 * 60 (30min)
     uint256 public constant MAX_LIMIT_ORDERS = 50; // maximum limit order size
 
     struct LimitOrder {
@@ -667,8 +666,6 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
     }
 
     function _openRound(uint256 epoch, uint256 initDate) internal {
-        require(block.timestamp >= initDate, "E19");
-
         rounds[epoch].openTimestamp = initDate;
         rounds[epoch].startTimestamp = initDate + intervalSeconds;
         rounds[epoch].closeTimestamp = initDate + (2 * intervalSeconds);
