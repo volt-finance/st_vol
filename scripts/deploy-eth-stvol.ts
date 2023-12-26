@@ -4,7 +4,7 @@ import config from "../config";
 const main = async () => {
   // Get network data from Hardhat config (see hardhat.config.ts).
   const networkName = network.name;
-  const STVOL_NAME = "StVol1PerDown";
+  const STVOL_NAME = "StVol0Per";
 
   // Check if the network is supported.
   if (networkName === "goerli"

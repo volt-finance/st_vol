@@ -703,10 +703,10 @@ contract StVol is Ownable, Pausable, ReentrancyGuard {
         round.totalAmount = round.totalAmount + _amount;
         if (_position == Position.Over) {
             round.overAmount = round.overAmount + _amount;
-            emit ParticipateOver(msg.sender, epoch, _amount);
+            emit ParticipateOver(_user, epoch, _amount);
         } else {
             round.underAmount = round.underAmount + _amount;
-            emit ParticipateUnder(msg.sender, epoch, _amount);
+            emit ParticipateUnder(_user, epoch, _amount);
         }
     }
 
